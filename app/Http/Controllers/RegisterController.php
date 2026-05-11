@@ -63,4 +63,42 @@ class RegisterController extends Controller
 
         return redirect('/login')->with('success', 'Cuenta creada. Ya puedes iniciar sesión.');
     }
+
+    public function registrarAdmin(Request $request){
+        $validated = $request->validate([
+            'nombre' => 'required',
+            'email'    => 'required|email:rfc,filter|unique:usuario,email',
+            'usuario' => 'required|unique:usuario,usuario',
+            'password' => 'required|min:6|confirmed',
+            'direccion' => 'required',
+            'telefono' => 'required',
+            'rol' => 'required'
+        ],
+        [
+            'nombre.required' => 'Debes ingresar tu nombre.',
+            'email.required' => 'Debes ingresar un correo.',
+            'email.email' => 'El correo no es válido.',
+            'email.unique' => 'Ese correo ya está registrado.',
+            'usuario.required' => 'Debes ingresar un usuario.',
+            'usuario.unique' => 'Ese usuario ya existe.',
+            'password.required' => 'Debes ingresar una contraseña.',
+            'password.min' => 'La contraseña debe tener mínimo 6 caracteres.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'direcccion.required' => 'Debes ingresar la dirección',
+            'telefono.required' => 'Debes ingresar un telefono',
+            'rol.required' => 'Debes seleccionar un rol'
+        ]);
+
+        $usuario = Usuario::create([
+            'nombre'    => $validated['nombre'],
+            'email'     => $validated['email'],
+            'usuario'   => $validated['usuario'],
+            'password'  => Hash::make($validated['password']),
+            'direccion' => $validated['direccion'],
+            'telefono'  => $validated['telefono'],
+            'rol'       => $validated['rol'],
+            'estado'    => 'Activo',
+        ]);
+        return response()->json(['usuario' => $usuario], 201);
+    }
 }
