@@ -41,3 +41,59 @@ window.alertaRetro = ({
         }
     });
 };
+
+window.alertaConfirmar = ({
+    titulo,
+    texto,
+    icono = 'success',
+    boton = 'CONTINUAR',
+    cancelar = false
+}) => {
+
+    return Swal.fire({
+        title: titulo,
+
+        html: `
+            <div class="retro-alert-content">
+                ${texto}
+            </div>
+        `,
+
+        icon: icono,
+
+        confirmButtonText: boton,
+
+        showCancelButton: cancelar,
+        cancelButtonText: 'CANCELAR',
+
+        background: '#09040f',
+        color: '#d8d2ff',
+
+        customClass: {
+            popup: 'retro-popup',
+            title: 'retro-title',
+            htmlContainer: 'retro-html',
+            confirmButton: 'retro-confirm',
+            cancelButton: 'retro-cancel',
+            icon: 'retro-icon'
+        },
+
+        buttonsStyling: false,
+
+        showClass: {
+            popup: `
+                animate__animated
+                animate__fadeInDown
+                animate__faster
+            `
+        },
+
+        hideClass: {
+            popup: `
+                animate__animated
+                animate__fadeOutUp
+                animate__faster
+            `
+        }
+    });
+};

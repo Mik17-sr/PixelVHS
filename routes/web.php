@@ -4,8 +4,10 @@ use App\Http\Controllers\DashboardAdminController;
 use App\Http\Controllers\PrincipalController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EditUsuarioController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\PerfilController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 
@@ -44,11 +46,33 @@ Route::post('/forgot-password', [PasswordResetController::class, 'enviarEnlace']
 Route::get('/reset-password/{token}', [PasswordResetController::class, 'mostrarReset'])->name('password.reset');
 Route::post('/reset-password', [PasswordResetController::class, 'resetear'])->name('password.update');
 
+Route::middleware(['auth'])->group(function () {
+    Route::post('/perfil/foto', [PerfilController::class, 'actualizarFoto'])->name('perfil.foto');
+    Route::put('/perfil/datos', [PerfilController::class, 'actualizarDatos'])->name('perfil.datos');
+});
+
+
 Route::middleware(['auth', 'role:admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-    Route::get('/registrar',
+    Route::post('/registrar',
         [RegisterController::class, 'registrarAdmin']
     )->name('registrar');
+
+    Route::put('/usuarios/{id}/toggle',
+        [EditUsuarioController::class, 'toggleUser']
+    )->name('usuarios.toggle');
+
+    Route::delete('/usuarios/{id}',
+        [EditUsuarioController::class, 'eliminarUsuario']
+    )->name('usuarios.eliminar');
+
+    Route::get('/usuarios/{id}',
+        [EditUsuarioController::class, 'obtenerUsuario']
+    )->name('usuarios.obtener');
+
+    Route::put('/usuarios/{id}',
+        [EditUsuarioController::class, 'actualizarUsuario']
+    )->name('usuarios.actualizar');
 });

@@ -174,3 +174,46 @@
     border-color: #a06020 !important;
     color: #c88040 !important;
 }
+
+.retro-cancel {
+    position: relative;
+    z-index: 2;
+    display: inline-flex !important;
+    align-items: center;
+    gap: .5rem;
+    background: transparent !important;
+    border: 1px solid rgba(192, 57, 43, .6) !important;
+    color: #C0392B !important;
+    padding: .75rem 2rem !important;
+    font-size: .72rem !important;
+    letter-spacing: .22rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: 4px !important;
+    font-family: 'Courier New', monospace !important;
+    box-shadow: 3px 3px 0 0 rgba(80, 20, 20, .8);
+    transition: box-shadow .15s, transform .15s;
+    margin-top: .4rem !important;
+}
+
+.retro-cancel:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 0 rgba(80, 20, 20, .8);
+}
+
+.retro-cancel:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 0 rgba(80, 20, 20, .8);
+}
+
+.swal2-actions {
+    gap: 1.2rem !important;
+}
+
+.retro-cancel {
+    background: rgba(192, 57, 43, 0.15) !important;
+}
+
+.retro-cancel:hover {
+    background: rgba(192, 57, 43, 0.3) !important;
+}

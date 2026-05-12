@@ -18,6 +18,7 @@ class Usuario extends Authenticatable
         'usuario',
         'password',
         'telefono',
+        'direccion',
         'foto_perfil',
         'fecha_registro',
         'estado',

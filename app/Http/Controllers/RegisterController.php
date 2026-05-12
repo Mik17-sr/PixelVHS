@@ -64,30 +64,40 @@ class RegisterController extends Controller
         return redirect('/login')->with('success', 'Cuenta creada. Ya puedes iniciar sesión.');
     }
 
-    public function registrarAdmin(Request $request){
-        $validated = $request->validate([
-            'nombre' => 'required',
-            'email'    => 'required|email:rfc,filter|unique:usuario,email',
-            'usuario' => 'required|unique:usuario,usuario',
-            'password' => 'required|min:6|confirmed',
-            'direccion' => 'required',
-            'telefono' => 'required',
-            'rol' => 'required'
-        ],
-        [
-            'nombre.required' => 'Debes ingresar tu nombre.',
-            'email.required' => 'Debes ingresar un correo.',
-            'email.email' => 'El correo no es válido.',
-            'email.unique' => 'Ese correo ya está registrado.',
-            'usuario.required' => 'Debes ingresar un usuario.',
-            'usuario.unique' => 'Ese usuario ya existe.',
-            'password.required' => 'Debes ingresar una contraseña.',
-            'password.min' => 'La contraseña debe tener mínimo 6 caracteres.',
-            'password.confirmed' => 'Las contraseñas no coinciden.',
-            'direcccion.required' => 'Debes ingresar la dirección',
-            'telefono.required' => 'Debes ingresar un telefono',
-            'rol.required' => 'Debes seleccionar un rol'
-        ]);
+    public function registrarAdmin(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'nombre'    => 'required',
+                'email'     => 'required|email:rfc,filter|unique:usuario,email',
+                'usuario'   => 'required|unique:usuario,usuario',
+                'password'  => 'required|min:6',
+                'password_confirmation' => 'required|same:password',
+                'direccion' => 'required',
+                'telefono'  => 'required',
+                'rol'       => 'required',
+            ], [
+                'nombre.required'   => 'Debes ingresar tu nombre.',
+                'email.required'    => 'Debes ingresar un correo.',
+                'email.email'       => 'El correo no es válido.',
+                'email.unique'      => 'Ese correo ya está registrado.',
+                'usuario.required'  => 'Debes ingresar un usuario.',
+                'usuario.unique'    => 'Ese usuario ya existe.',
+                'password.required' => 'Debes ingresar una contraseña.',
+                'password.min'      => 'La contraseña debe tener mínimo 6 caracteres.',
+                'password_confirmation.required' => 'Debes confirmar la contraseña.',
+                'password_confirmation.same' => 'Las contraseñas no coinciden.',
+                'direccion.required'=> 'Debes ingresar la dirección.',
+                'telefono.required' => 'Debes ingresar un teléfono.',
+                'rol.required'      => 'Debes seleccionar un rol.',
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'ok'     => false,
+                'errors' => $e->errors(), 
+            ], 422);
+        }
 
         $usuario = Usuario::create([
             'nombre'    => $validated['nombre'],
@@ -96,9 +106,37 @@ class RegisterController extends Controller
             'password'  => Hash::make($validated['password']),
             'direccion' => $validated['direccion'],
             'telefono'  => $validated['telefono'],
+            'fecha_registro' => now(),
             'rol'       => $validated['rol'],
             'estado'    => 'Activo',
         ]);
-        return response()->json(['usuario' => $usuario], 201);
+
+        if($validated['rol'] === 'empleado'){
+            Mail::send(
+                'emails.bienvenida',
+                ['usuario' => $usuario],
+                function ($message) use ($usuario) {
+
+                    $message->to($usuario->email)
+                            ->subject('Bienvenido nuevo empleado a PIXELVHS');
+                }
+            );
+        }else{
+            Mail::send(
+                'emails.bienvenida',
+                ['usuario' => $usuario],
+                function ($message) use ($usuario) {
+
+                    $message->to($usuario->email)
+                            ->subject('Bienvenido nuevo administrador a PIXELVHS');
+                }
+            );    
+        }
+        
+
+        return response()->json([
+            'ok'      => true,
+            'usuario' => $usuario,
+        ], 201);
     }
 }
