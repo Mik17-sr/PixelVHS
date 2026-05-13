@@ -24,4 +24,9 @@ class Formato extends Model
     {
         return $this->hasMany(ListaEspera::class, 'id_formato');
     }
+
+    public function portadas()
+    {
+        return $this->hasMany(PortadaPelicula::class, 'id_formato');
+    }
 }

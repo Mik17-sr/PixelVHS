@@ -14,27 +14,29 @@ class Pelicula extends Model
         'titulo',
         'resumen',
         'anio_lanzamiento',
+        'duracion_minutos',
+        'estudio',
         'precio_alquiler',
-        'foto_caratula',
         'foto_portada',
         'banner',
+        'clasificacion',
         'id_director',
         'id_genero',
     ];
 
     public function genero()
     {
-        return $this->belongsTo(Genero::class);
+        return $this->belongsTo(Genero::class, 'id_genero', 'id_genero');
     }
 
     public function director()
     {
-        return $this->belongsTo(Director::class);
+        return $this->belongsTo(Director::class, 'id_director', 'id_director');
     }
 
     public function cintas()
     {
-        return $this->hasMany(Cinta::class, 'id_pelicula');
+        return $this->hasMany(Cinta::class, 'id_pelicula', 'id_pelicula');
     }
 
     public function actores()
@@ -55,5 +57,10 @@ class Pelicula extends Model
     public function valoraciones()
     {
         return $this->hasMany(Valoracion::class, 'id_pelicula');
+    }
+
+    public function portadas()
+    {
+        return $this->hasMany(PortadaPelicula::class, 'id_pelicula');
     }
 }

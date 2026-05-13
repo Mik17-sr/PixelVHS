@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BEBOP VIDEO — ADMIN</title>
+    <title>PIXELVHS — ADMIN</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&family=Bebas+Neue&family=Rajdhani:wght@400;600&display=swap"
@@ -998,7 +998,7 @@
         <div class="logo">
             <div class="logo-mark"></div>
             <div class="logo-words">
-                <h1>BEBOP<em>VIDEO</em></h1>
+                <h1>PIXEL<em>VHS</em></h1>
                 <small>EST. 1985 &nbsp;·&nbsp; VHS RENTALS</small>
             </div>
         </div>
@@ -1153,7 +1153,7 @@
                         </div>
                         <div class="form-group">
                             <label>EMAIL</label>
-                            <input type="email" id="u-email" name="email" placeholder="correo@bebopvideo.com">
+                            <input type="email" id="u-email" name="email" placeholder="correo@pixelvhs.com">
                             <span class="field-error" id="err-email"></span>
                         </div>
                         <div class="form-group">
@@ -1450,7 +1450,7 @@
                     </div>
                     <div class="form-group">
                         <label>EMAIL</label>
-                        <input type="email" id="edit-email" placeholder="correo@bebopvideo.com">
+                        <input type="email" id="edit-email" placeholder="correo@pixelvhs.com">
                         <span class="field-error" id="edit-err-email"></span>
                     </div>
                     <div class="form-group">

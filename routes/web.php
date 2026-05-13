@@ -4,10 +4,14 @@ use App\Http\Controllers\DashboardAdminController;
 use App\Http\Controllers\PrincipalController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardEmpleadoController;
+use App\Http\Controllers\DirectorController;
 use App\Http\Controllers\EditUsuarioController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PerfilController;
+use App\Http\Controllers\ActorController;
+use App\Http\Controllers\PeliculaController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 
@@ -33,9 +37,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 });
 
 Route::middleware(['auth', 'role:empleado'])->group(function () {
-    Route::get('/dashboard_empleado', function () {
-        return view('principal');
-    })->name('dashboard.empleado');
+    Route::get('/dashboard_empleado',
+        [DashboardEmpleadoController::class, 'mostrarPrincipal']
+    )->name('dashboard.empleado'); 
 });
 
 Route::get('/registro', [RegisterController::class, 'mostrarRegistro'])->name('registro');
@@ -76,3 +80,38 @@ Route::middleware(['auth', 'role:admin'])
         [EditUsuarioController::class, 'actualizarUsuario']
     )->name('usuarios.actualizar');
 });
+
+Route::middleware(['auth', 'role:empleado'])
+    ->prefix('empleado')
+    ->name('empleado.')
+    ->group(function () {
+
+    Route::post('/directores/registrar',
+        [DirectorController::class, 'registrarDirector']
+    )->name('directores.registrar');
+
+    Route::post('/directores/{id}', 
+        [DirectorController::class, 'update'])
+     ->name('directores.actualizar');
+
+    Route::delete('/directores/{id}', 
+        [DirectorController::class, 'destroy'])
+     ->name('directores.destroy');
+
+     Route::post('/actores/registrar', 
+        [ActorController::class, 'registrar'])
+     ->name('actores.registrar');
+
+     Route::post('/actores/{id}', 
+        [ActorController::class, 'update'])
+    ->name('actores.actualizar');
+
+     Route::delete('/actores/{id}', 
+        [ActorController::class, 'destroy'])
+     ->name('actores.destroy');
+
+     Route::post('/peliculas/registrar', 
+        [PeliculaController::class, 'registrarPelicula'])
+    ->name('peliculas.registrar');
+});
+

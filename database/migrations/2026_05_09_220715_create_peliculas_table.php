@@ -19,7 +19,6 @@ return new class extends Migration
             $table->integer('duracion_minutos');
             $table->string('estudio');
             $table->decimal('precio_alquiler', 10, 2);
-            $table->string('foto_caratula')->nullable();
             $table->string('foto_portada')->nullable();
             $table->string('banner')->nullable();
             $table->enum('clasificacion', ['G','PG','PG-13','R','NC-17']);

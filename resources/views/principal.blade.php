@@ -9,6 +9,795 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
   <link rel="stylesheet" href="{{ asset('css/alertas.css') }}">
   <meta name="csrf-token" content="{{ csrf_token() }}">
+
+  <style>
+    #detailPosterWrap {
+      flex-shrink: 0;
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* poster default sin cambios de tamaño */
+    #posterDefault {
+      width: 100%;
+      position: relative;
+    }
+
+    #posterDefault img {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      display: block;
+      filter: sepia(10%) contrast(1.05);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .8), 0 0 0 1px rgba(123, 94, 167, .2);
+    }
+
+    #posterDefault::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0, 0, 0, .06) 3px, rgba(0, 0, 0, .06) 4px);
+      pointer-events: none;
+    }
+
+    /* ─────────────────────────────────────────
+   VISOR (reemplaza el poster, mismo ancho)
+───────────────────────────────────────── */
+    #formatViewer {
+      width: 100%;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6, 6, 6, .7);
+      border: 1px solid rgba(123, 94, 167, .15);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .fmt-scene {
+      width: 100%;
+      height: 100%;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ─────────────────────────────────────────
+   BOTONES DE FORMATO
+───────────────────────────────────────── */
+    .fmt-btns-row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 4px;
+      margin-top: 10px;
+    }
+
+    .fmt-btn {
+      background: transparent;
+      border: 1px solid var(--g-dark);
+      color: var(--g);
+      font-family: var(--fm);
+      font-size: 8px;
+      letter-spacing: 1.5px;
+      padding: 8px 4px;
+      cursor: pointer;
+      transition: all .18s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      text-transform: uppercase;
+    }
+
+    .fmt-btn span {
+      font-size: 12px;
+      color: var(--v-dim);
+      line-height: 1;
+      transition: color .18s;
+    }
+
+    .fmt-btn:hover {
+      border-color: var(--v);
+      color: var(--w);
+    }
+
+    .fmt-btn:hover span {
+      color: var(--v);
+    }
+
+    .fmt-btn.active {
+      background: var(--v-soft);
+      color: var(--w);
+      border-color: var(--v);
+      box-shadow: 0 0 8px rgba(123, 94, 167, .2);
+    }
+
+    .fmt-btn.active span {
+      color: var(--v);
+    }
+
+    /* ─────────────────────────────────────────
+   ESCENAS 3D
+  ───────────────────────────────────────── */
+    .fv-scene {
+      perspective: 1800px;
+    }
+
+    /* ══ DVD ══ */
+    .dvd-scene {
+      perspective: 1800px;
+    }
+
+    .fv-dvd {
+      position: relative;
+      width: 180px;
+      height: 262px;
+      transform-style: preserve-3d;
+      animation: fvDvdSpin 12s linear infinite;
+    }
+
+    .fv-dvd:hover {
+      animation-play-state: paused;
+    }
+
+    .fv-dvd-front,
+    .fv-dvd-back,
+    .fv-dvd-left,
+    .fv-dvd-right,
+    .fv-dvd-top,
+    .fv-dvd-bottom {
+      position: absolute;
+      box-shadow: 0 0 20px rgba(0, 0, 0, .5);
+      backface-visibility: visible;
+    }
+
+    .fv-dvd-front {
+      width: 180px;
+      height: 262px;
+      background-size: cover;
+      background-position: center;
+      transform: translateZ(14px);
+      border-radius: 3px;
+    }
+
+    .fv-dvd-back {
+      width: 180px;
+      height: 262px;
+      background-size: cover;
+      background-position: center;
+      transform: rotateY(180deg) translateZ(14px);
+      border-radius: 3px;
+      filter: brightness(.7) sepia(.3);
+    }
+
+    .fv-dvd-left {
+      width: 28px;
+      height: 262px;
+      background-size: cover;
+      background-position: center;
+      transform: rotateY(-90deg) translateZ(14px);
+    }
+
+    .fv-dvd-right {
+      width: 28px;
+      height: 262px;
+      background: #1a1a1a;
+      transform: rotateY(90deg) translateZ(166px);
+    }
+
+    .fv-dvd-top {
+      width: 180px;
+      height: 28px;
+      background: #2b2b2b;
+      transform: rotateX(90deg) translateZ(14px);
+    }
+
+    .fv-dvd-bottom {
+      width: 180px;
+      height: 28px;
+      background: #111;
+      transform: rotateX(-90deg) translateZ(248px);
+    }
+
+    @keyframes fvDvdSpin {
+      from {
+        transform: rotateX(-8deg) rotateY(-15deg);
+        /* ángulo ligero, portada visible */
+      }
+
+      to {
+        transform: rotateX(-8deg) rotateY(345deg);
+      }
+    }
+
+    /* ══ DISCO (Blu-ray / UHD) ══ */
+    .disc-scene {
+      perspective: 1600px;
+    }
+
+    .fv-disc-glow {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(150, 150, 160, .04), transparent 70%);
+      filter: blur(30px);
+      z-index: -1;
+      opacity: .5;
+      pointer-events: none;
+    }
+
+    .fv-disc {
+      position: relative;
+      width: 230px;
+      height: 230px;
+      border-radius: 50%;
+      transform-style: preserve-3d;
+      animation: fvDiscSpin 16s ease-in-out infinite;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .2);
+    }
+
+    @keyframes fvDiscSpin {
+      from {
+        transform: rotateX(16deg) rotateY(0deg);
+      }
+
+      to {
+        transform: rotateX(16deg) rotateY(360deg);
+      }
+    }
+
+    .fv-disc::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: linear-gradient(90deg, #aaa, #ccc, #e0e0e0, #ccc, #aaa);
+      transform: translateZ(-2px) scale(1.01);
+      filter: blur(1px);
+      opacity: .7;
+    }
+
+    .fv-disc::after {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: 50%;
+      background: linear-gradient(90deg, #999, #bbb, #d5d5d5, #bbb, #999);
+      transform: translateZ(-3px);
+      filter: blur(1px);
+      z-index: 0;
+      opacity: .5;
+    }
+
+    .fv-disc-front,
+    .fv-disc-back {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      backface-visibility: hidden;
+    }
+
+    .fv-disc-front {
+      background-size: cover;
+      background-position: center;
+      transform: translateZ(4px);
+      overflow: hidden;
+      box-shadow: inset 0 0 24px rgba(0, 0, 0, .08), inset 0 0 5px rgba(255, 255, 255, .3);
+      z-index: 3;
+    }
+
+    .fv-disc-front::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: linear-gradient(130deg, rgba(255, 255, 255, .15), transparent 30%);
+    }
+
+    .fv-disc-front::after {
+      content: "";
+      position: absolute;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #444 0%, #2a2a2a 70%, #111 100%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, .2), 0 1px 2px rgba(0, 0, 0, .2);
+    }
+
+    /* back base */
+    .fv-disc-back {
+      overflow: hidden;
+      transform: rotateY(180deg) translateZ(4px);
+      z-index: 1;
+      background: radial-gradient(circle at 35% 45%, #f5f5f5 0%, #eaeaea 25%, #dedede 50%, #d2d2d2 75%, #c8c8c8 100%);
+      background-image: repeating-linear-gradient(110deg, transparent, transparent 8px, rgba(160, 160, 170, .08) 8px, rgba(160, 160, 170, .08) 9px, transparent 9px, transparent 18px);
+      box-shadow: inset 0 0 30px rgba(0, 0, 0, .06), inset 0 0 12px rgba(255, 255, 255, .5), 0 2px 6px rgba(0, 0, 0, .08);
+    }
+
+    /* capas del back */
+    .fv-iridescent {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg at 30% 45%, rgba(255, 235, 180, .03) 0deg, rgba(210, 235, 255, .025) 60deg, rgba(255, 220, 235, .02) 120deg, rgba(190, 230, 255, .025) 180deg, rgba(255, 235, 210, .02) 240deg, rgba(210, 220, 255, .025) 300deg, rgba(255, 235, 180, .03) 360deg);
+      mix-blend-mode: soft-light;
+      filter: blur(25px);
+      opacity: .35;
+      pointer-events: none;
+      animation: fvOpticalShift 22s ease-in-out infinite;
+    }
+
+    @keyframes fvOpticalShift {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.01);
+      }
+    }
+
+    .fv-reflection-diagonal {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(255, 255, 255, .22) 0%, rgba(255, 255, 255, .08) 18%, transparent 38%, transparent 75%, rgba(255, 255, 255, .04) 88%, transparent 100%);
+      filter: blur(6px);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .fv-reflection-bottom {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: linear-gradient(215deg, transparent 65%, rgba(180, 185, 195, .06) 80%, rgba(255, 255, 255, .04) 90%, transparent 98%);
+      filter: blur(4px);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .fv-metal-rings {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 48%, transparent 0px, transparent 26px, rgba(100, 100, 110, .05) 27px, transparent 28px, transparent 46px, rgba(90, 90, 100, .04) 47px, transparent 48px, transparent 66px, rgba(80, 80, 90, .03) 67px, transparent 68px, transparent 88px, rgba(70, 70, 80, .025) 89px, transparent 90px);
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .fv-brushed-metal {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: repeating-linear-gradient(105deg, transparent, transparent 7px, rgba(140, 140, 150, .05) 7px, rgba(140, 140, 150, .05) 8px, transparent 8px, transparent 16px);
+      pointer-events: none;
+      z-index: 2;
+      opacity: .4;
+    }
+
+    .fv-dynamic-sheen {
+      position: absolute;
+      inset: -10px;
+      border-radius: 50%;
+      background: radial-gradient(circle at var(--sheen-x, 50%) var(--sheen-y, 50%), rgba(255, 255, 255, .05) 0%, rgba(255, 255, 255, .025) 20%, transparent 55%);
+      mix-blend-mode: screen;
+      filter: blur(18px);
+      opacity: .6;
+      pointer-events: none;
+      z-index: 4;
+      transition: background .06s linear;
+    }
+
+    .fv-center-hole {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 38px;
+      height: 38px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      z-index: 5;
+      background: radial-gradient(circle at 35% 40%, #6a6a6a 0%, #4a4a4a 40%, #353535 70%, #2a2a2a 100%);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, .25), 0 0 0 2px rgba(100, 100, 110, .3), inset 0 0 4px rgba(0, 0, 0, .3);
+    }
+
+    /* UHD extras */
+    .fv-rainbow-ring {
+      position: absolute;
+      inset: 10px;
+      border-radius: 50%;
+      z-index: 4;
+      pointer-events: none;
+      background: conic-gradient(from 0deg, #ff6b6b 0deg, #ffd93d 45deg, #6bcb77 90deg, #4d96ff 135deg, #9b59b6 180deg, #ff6b6b 225deg, #ffd93d 270deg, #6bcb77 315deg, #4d96ff 360deg);
+      opacity: 0;
+      mix-blend-mode: screen;
+      filter: blur(1px);
+      animation: fvRainbowShine 3s ease-in-out infinite;
+    }
+
+    .fv-rainbow-ring-subtle {
+      position: absolute;
+      inset: 16px;
+      border-radius: 50%;
+      z-index: 4;
+      pointer-events: none;
+      background: conic-gradient(from 0deg, rgba(255, 107, 107, .15) 0deg, rgba(255, 217, 61, .15) 60deg, rgba(107, 203, 119, .15) 120deg, rgba(77, 150, 255, .15) 180deg, rgba(155, 89, 182, .15) 240deg, rgba(255, 107, 107, .15) 300deg, rgba(255, 217, 61, .15) 360deg);
+      mix-blend-mode: screen;
+      filter: blur(3px);
+      animation: fvSubtleRainbow 4s ease-in-out infinite;
+    }
+
+    .fv-specular-highlight {
+      position: absolute;
+      inset: 26px;
+      border-radius: 50%;
+      z-index: 4;
+      pointer-events: none;
+      background: radial-gradient(ellipse at 30% 40%, rgba(255, 255, 255, .35) 0%, rgba(255, 255, 255, .1) 30%, transparent 70%);
+      filter: blur(2px);
+      animation: fvSpecularMove 6s ease-in-out infinite;
+    }
+
+    .fv-diffraction {
+      position: absolute;
+      inset: 6px;
+      border-radius: 50%;
+      z-index: 4;
+      pointer-events: none;
+      background: repeating-conic-gradient(from 0deg, rgba(255, 100, 100, .08) 0deg 10deg, rgba(255, 200, 100, .08) 10deg 20deg, rgba(100, 255, 100, .08) 20deg 30deg, rgba(100, 100, 255, .08) 30deg 40deg, rgba(255, 100, 255, .08) 40deg 50deg, transparent 50deg 60deg);
+      mix-blend-mode: screen;
+      animation: fvDiffractionRotate 8s linear infinite;
+    }
+
+    /* UHD sheen más intenso */
+    #fmt-uhd .fv-dynamic-sheen {
+      background: radial-gradient(circle at var(--sheen-x, 50%) var(--sheen-y, 50%), rgba(255, 255, 255, .12) 0%, rgba(255, 255, 255, .06) 20%, transparent 60%);
+      filter: blur(12px);
+      opacity: .8;
+    }
+
+    @keyframes fvRainbowShine {
+
+      0%,
+      100% {
+        opacity: 0;
+        transform: scale(.95);
+      }
+
+      50% {
+        opacity: .25;
+        transform: scale(1);
+        filter: blur(1px);
+      }
+    }
+
+    @keyframes fvSubtleRainbow {
+
+      0%,
+      100% {
+        opacity: .08;
+        transform: rotate(0deg);
+      }
+
+      50% {
+        opacity: .2;
+        transform: rotate(180deg);
+      }
+    }
+
+    @keyframes fvSpecularMove {
+
+      0%,
+      100% {
+        background: radial-gradient(ellipse at 30% 40%, rgba(255, 255, 255, .35) 0%, rgba(255, 255, 255, .1) 30%, transparent 70%);
+      }
+
+      50% {
+        background: radial-gradient(ellipse at 70% 60%, rgba(255, 255, 255, .4) 0%, rgba(255, 255, 255, .12) 30%, transparent 70%);
+      }
+    }
+
+    @keyframes fvDiffractionRotate {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ══ VHS ══ */
+    .vhs-scene {
+      perspective: 2200px;
+    }
+
+    .fv-vhs {
+      position: relative;
+      width: 260px;
+      height: 150px;
+      transform-style: preserve-3d;
+      animation: fvVhsSpin 14s linear infinite;
+    }
+
+    .fv-vhs:hover {
+      animation-play-state: paused;
+    }
+
+    .fv-vhs-front,
+    .fv-vhs-back,
+    .fv-vhs-left,
+    .fv-vhs-right,
+    .fv-vhs-top,
+    .fv-vhs-bottom {
+      position: absolute;
+      border-radius: 5px;
+      box-shadow: 0 0 22px rgba(0, 0, 0, .6), inset 0 0 14px rgba(255, 255, 255, .03);
+      backface-visibility: visible;
+    }
+
+    .fv-vhs-front {
+      width: 260px;
+      height: 150px;
+      background: linear-gradient(145deg, #343434, #121212 40%, #1c1c1c 100%);
+      transform: translateZ(15px);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .04);
+    }
+
+    .fv-vhs-front::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .025) 0px, rgba(255, 255, 255, .025) 1px, transparent 1px, transparent 4px);
+      opacity: .45;
+      mix-blend-mode: screen;
+    }
+
+    .fv-vhs-front::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(255, 255, 255, .08), transparent 30%), radial-gradient(circle at bottom right, rgba(0, 0, 0, .35), transparent 40%);
+      pointer-events: none;
+    }
+
+    /* label VHS */
+    .fv-label {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 118px;
+      height: 68px;
+      overflow: hidden;
+      z-index: 2;
+      border-radius: 5px;
+      background: #050505;
+      border: 2px solid rgba(255, 210, 90, .75);
+      box-shadow: inset 0 0 14px rgba(0, 0, 0, .85), 0 0 12px rgba(0, 0, 0, .45);
+    }
+
+    .fv-movie-cover {
+      position: absolute;
+      inset: 0;
+      background-image: var(--cover);
+      background-size: cover;
+      background-position: center;
+      transform: scale(1.05);
+    }
+
+    .fv-movie-cover::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, .1), rgba(0, 0, 0, .5));
+      mix-blend-mode: multiply;
+    }
+
+    .fv-vhs-title {
+      position: absolute;
+      width: 100%;
+      bottom: 5px;
+      left: 0;
+      text-align: center;
+      color: #f3e7c2;
+      font-family: Impact, Arial Black, sans-serif;
+      font-size: 9px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      z-index: 10;
+      text-shadow: 0 0 4px rgba(255, 220, 120, .4), 1px 1px 0 rgba(0, 0, 0, .8);
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* ventanas VHS */
+    .fv-window {
+      position: absolute;
+      width: 62px;
+      height: 62px;
+      top: 44px;
+      background: radial-gradient(circle, rgba(255, 255, 255, .15), rgba(0, 0, 0, .8));
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, .08);
+      z-index: 1;
+    }
+
+    .fv-left-window {
+      left: 16px;
+    }
+
+    .fv-right-window {
+      right: 16px;
+    }
+
+    .fv-reel {
+      position: absolute;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, #fff 0%, #ddd 30%, #999 100%);
+      animation: fvReelSpin 3s linear infinite;
+    }
+
+    .fv-reel::before {
+      content: "";
+      position: absolute;
+      inset: 10px;
+      border-radius: 50%;
+      border: 5px solid rgba(0, 0, 0, .15);
+    }
+
+    /* trasera VHS */
+    .fv-vhs-back {
+      width: 260px;
+      height: 150px;
+      background: linear-gradient(145deg, #2c2c2c, #141414);
+      transform: rotateY(180deg) translateZ(15px);
+      overflow: hidden;
+    }
+
+    .fv-vhs-back::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0px, rgba(255, 255, 255, .03) 2px, transparent 2px, transparent 6px);
+      opacity: .25;
+    }
+
+    .fv-back-reel {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #f5f5f5 0%, #d7d7d7 45%, #8e8e8e 100%);
+      top: 78px;
+    }
+
+    .fv-left-reel {
+      left: 50px;
+    }
+
+    .fv-right-reel {
+      right: 50px;
+    }
+
+    .fv-back-reel::before {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border-radius: 50%;
+      border: 4px solid rgba(0, 0, 0, .15);
+    }
+
+    .fv-screw {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #111;
+      box-shadow: inset 0 0 2px rgba(255, 255, 255, .2);
+    }
+
+    .fv-s1 {
+      top: 10px;
+      left: 10px;
+    }
+
+    .fv-s2 {
+      top: 10px;
+      right: 10px;
+    }
+
+    .fv-s3 {
+      bottom: 10px;
+      left: 10px;
+    }
+
+    .fv-s4 {
+      bottom: 10px;
+      right: 10px;
+    }
+
+    .fv-line-detail {
+      position: absolute;
+      width: 100%;
+      height: 1px;
+      background: rgba(255, 255, 255, .08);
+      top: 70px;
+    }
+
+    /* laterales / tapa VHS */
+    .fv-vhs-left,
+    .fv-vhs-right {
+      width: 30px;
+      height: 150px;
+      background: #151515;
+    }
+
+    .fv-vhs-left {
+      transform: rotateY(-90deg) translateZ(15px);
+    }
+
+    .fv-vhs-right {
+      transform: rotateY(90deg) translateZ(245px);
+    }
+
+    .fv-vhs-top,
+    .fv-vhs-bottom {
+      width: 260px;
+      height: 30px;
+      background: #222;
+    }
+
+    .fv-vhs-top {
+      transform: rotateX(90deg) translateZ(15px);
+    }
+
+    .fv-vhs-bottom {
+      transform: rotateX(-90deg) translateZ(135px);
+    }
+
+    @keyframes fvVhsSpin {
+      from {
+        transform: rotateX(-10deg) rotateY(-30deg);
+      }
+
+      to {
+        transform: rotateX(-10deg) rotateY(330deg);
+      }
+    }
+
+    @keyframes fvReelSpin {
+      from {
+        transform: translate(-50%, -50%) rotate(0deg);
+      }
+
+      to {
+        transform: translate(-50%, -50%) rotate(360deg);
+      }
+    }
+  </style>
   <style>
     :root {
       --v: #7B5EA7;
@@ -1476,39 +2265,87 @@
 </head>
 
 <body>
-
-  {{-- ── PHP / BLADE ── --}}
   @php
+  $base = config('app.url');
+  function mapearPortadas($portadas, $fallback, $base): array
+  {
+  $map = [];
+  foreach ($portadas as $portada) {
+  $clave = strtolower(preg_replace('/[\s\-_]+/', '', $portada->formato->nombre ?? ''));
+  $map[$clave] = $portada->imagen
+  ? $base . '/storage/' . ltrim($portada->imagen, '/')
+  : $fallback;
+  }
+  $alias = [
+  'bluray' => ['bluray', 'blu-ray', 'blueray'],
+  'uhd' => ['uhd', 'uhd4k', 'uhd 4k', '4k', 'uhdbd', 'blurayuhd', 'ultrahd'],
+  'dvd' => ['dvd'],
+  'vhs' => ['vhs'],
+  ];
+  $resultado = [];
+  foreach ($alias as $clave => $variantes) {
+  $resultado[$clave] = $fallback;
+  foreach ($variantes as $v) {
+  $v = strtolower(preg_replace('/[\s\-_]+/', '', $v));
+  if (isset($map[$v])) {
+  $resultado[$clave] = $map[$v];
+  break;
+  }
+  }
+  }
+  return $resultado;
+  }
   $movieMap = [];
   foreach ($peliculasDestacadas as $pelicula) {
+  $fallback = $pelicula->foto_portada
+  ? $base . '/storage/' . ltrim($pelicula->foto_portada, '/')
+  : null;
+  $portadas = mapearPortadas($pelicula->portadas, $fallback, $base);
   $movieMap[$pelicula->id_pelicula] = [
   'id_pelicula' => $pelicula->id_pelicula,
   'titulo' => $pelicula->titulo,
   'resumen' => $pelicula->resumen,
   'anio_lanzamiento' => $pelicula->anio_lanzamiento,
   'precio_alquiler' => $pelicula->precio_alquiler,
-  'foto_caratula' => $pelicula->foto_caratula,
-  'foto_portada' => $pelicula->foto_portada,
+  'duracion' => $pelicula->duracion_minutos,
+  'foto_portada' => $fallback,
+  'foto_caratula' => $fallback,
+  'banner' => $pelicula->banner ? asset($pelicula->banner) : null,
   'genero' => $pelicula->genero,
   'director' => $pelicula->director,
   'actores' => $pelicula->actores,
   'cintas' => $pelicula->cintas,
+  'imagen_dvd' => $portadas['dvd'],
+  'imagen_bluray' => $portadas['bluray'],
+  'imagen_uhd' => $portadas['uhd'],
+  'imagen_vhs' => $portadas['vhs'],
   ];
   }
   foreach ($peliculasPorGenero as $grupoPeliculas) {
   foreach ($grupoPeliculas as $pelicula) {
+  if (isset($movieMap[$pelicula->id_pelicula])) continue; // ya está, no duplicar
+  $fallback = $pelicula->foto_portada
+  ? $base . '/storage/' . ltrim($pelicula->foto_portada, '/')
+  : null;
+  $portadas = mapearPortadas($pelicula->portadas, $fallback, $base);
   $movieMap[$pelicula->id_pelicula] = [
   'id_pelicula' => $pelicula->id_pelicula,
   'titulo' => $pelicula->titulo,
   'resumen' => $pelicula->resumen,
   'anio_lanzamiento' => $pelicula->anio_lanzamiento,
   'precio_alquiler' => $pelicula->precio_alquiler,
-  'foto_caratula' => $pelicula->foto_caratula,
-  'foto_portada' => $pelicula->foto_portada,
+  'duracion' => $pelicula->duracion_minutos,
+  'foto_portada' => $fallback,
+  'foto_caratula' => $fallback,
+  'banner' => $pelicula->banner ? asset($pelicula->banner) : null,
   'genero' => $pelicula->genero,
   'director' => $pelicula->director,
   'actores' => $pelicula->actores,
   'cintas' => $pelicula->cintas,
+  'imagen_dvd' => $portadas['dvd'],
+  'imagen_bluray' => $portadas['bluray'],
+  'imagen_uhd' => $portadas['uhd'],
+  'imagen_vhs' => $portadas['vhs'],
   ];
   }
   }
@@ -1587,7 +2424,7 @@
             data-genre="{{ $pelicula->genero->id_genero ?? 'n/a' }}"
             data-title="{{ strtolower($pelicula->titulo) }}"
             data-year="{{ $pelicula->anio_lanzamiento }}"
-            onclick="openDetail({{ json_encode($pelicula) }})">
+            onclick="openDetail(window.MOVIE_MAP[{{ $pelicula->id_pelicula }}])">
             @if($pelicula->clasificacion)
             <div class="b-rating">{{ $pelicula->clasificacion }}</div>
             @endif
@@ -1596,7 +2433,7 @@
             <div class="b-rented">NO DISPONIBLE</div>
             @endif
             <div class="tw">
-              <img src="{{ asset($pelicula->foto_portada) }}"
+              <img src="{{ $base . '/storage/' . ltrim($pelicula->foto_portada, '/') }}"
                 alt="{{ $pelicula->titulo }}" class="thumb" loading="lazy">
             </div>
             <div class="strip">
@@ -1637,7 +2474,7 @@
             <div class="b-rented">NO DISPONIBLE</div>
             @endif
             <div class="tw">
-              <img src="{{ asset($pelicula->foto_caratula) }}"
+              <img src="{{ $base . '/storage/' . ltrim($pelicula->foto_portada, '/') }}"
                 alt="{{ $pelicula->titulo }}" class="thumb" loading="lazy">
             </div>
             <div class="strip">
@@ -1682,7 +2519,7 @@
             <div class="b-rented">NO DISPONIBLE</div>
             @endif
             <div class="tw">
-              <img src="{{ asset($pelicula->foto_caratula) }}"
+              <img src="{{ $base . '/storage/' . ltrim($pelicula->foto_portada, '/') }}"
                 alt="{{ $pelicula->titulo }}" class="thumb" loading="lazy">
             </div>
             <div class="strip">
@@ -1877,11 +2714,124 @@
       </div>
 
       <div class="detail-body">
-        <div class="detail-poster">
-          <img id="detailImg" src="" alt="Poster">
-          <div class="detail-rented-banner" id="detailRented" style="display:none">RENTADA</div>
-        </div>
+        <div class="detail-poster" id="detailPosterWrap">
 
+          {{-- VISTA POSTER (default) --}}
+          <div id="posterDefault">
+            <img id="detailImg" src="" alt="Poster">
+            <div class="detail-rented-banner" id="detailRented" style="display:none">RENTADA</div>
+          </div>
+
+          {{-- ══ VISOR DE FORMATO (reemplaza el poster) ══ --}}
+          <div id="formatViewer" style="display:none;">
+
+            {{-- DVD --}}
+            <div class="fmt-scene" id="fmt-dvd" style="display:none;">
+              <div class="fv-scene dvd-scene">
+                <div class="fv-dvd" id="fvDvd">
+                  <div class="fv-dvd-front" id="fvDvdFront"></div>
+                  <div class="fv-dvd-back" id="fvDvdBack"></div>
+                  <div class="fv-dvd-left" id="fvDvdLeft"></div>
+                  <div class="fv-dvd-right"></div>
+                  <div class="fv-dvd-top"></div>
+                  <div class="fv-dvd-bottom"></div>
+                </div>
+              </div>
+            </div>
+
+            {{-- BLU-RAY --}}
+            <div class="fmt-scene" id="fmt-bluray" style="display:none;">
+              <div class="fv-scene disc-scene">
+                <div class="fv-disc-glow"></div>
+                <div class="fv-disc" id="fvBluray">
+                  <div class="fv-disc-front" id="fvBlurayFront"></div>
+                  <div class="fv-disc-back">
+                    <div class="fv-iridescent"></div>
+                    <div class="fv-reflection-diagonal"></div>
+                    <div class="fv-reflection-bottom"></div>
+                    <div class="fv-metal-rings"></div>
+                    <div class="fv-brushed-metal"></div>
+                    <div class="fv-dynamic-sheen" id="fvBluraySheen"></div>
+                    <div class="fv-center-hole"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {{-- UHD 4K --}}
+            <div class="fmt-scene" id="fmt-uhd" style="display:none;">
+              <div class="fv-scene disc-scene">
+                <div class="fv-disc-glow"></div>
+                <div class="fv-disc" id="fvUhd">
+                  <div class="fv-disc-front" id="fvUhdFront"></div>
+                  <div class="fv-disc-back">
+                    <div class="fv-iridescent"></div>
+                    <div class="fv-reflection-diagonal"></div>
+                    <div class="fv-reflection-bottom"></div>
+                    <div class="fv-metal-rings"></div>
+                    <div class="fv-brushed-metal"></div>
+                    <div class="fv-rainbow-ring"></div>
+                    <div class="fv-rainbow-ring-subtle"></div>
+                    <div class="fv-specular-highlight"></div>
+                    <div class="fv-diffraction"></div>
+                    <div class="fv-dynamic-sheen" id="fvUhdSheen"></div>
+                    <div class="fv-center-hole"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {{-- VHS --}}
+            <div class="fmt-scene" id="fmt-vhs" style="display:none;">
+              <div class="fv-scene vhs-scene">
+                <div class="fv-vhs" id="fvVhs">
+                  <div class="fv-vhs-front">
+                    <div class="fv-window fv-left-window">
+                      <div class="fv-reel"></div>
+                    </div>
+                    <div class="fv-window fv-right-window">
+                      <div class="fv-reel"></div>
+                    </div>
+                    <div class="fv-label">
+                      <div class="fv-movie-cover" id="fvVhsCover"></div>
+                      <div class="fv-vhs-title" id="fvVhsTitle"></div>
+                    </div>
+                  </div>
+                  <div class="fv-vhs-back">
+                    <div class="fv-back-reel fv-left-reel"></div>
+                    <div class="fv-back-reel fv-right-reel"></div>
+                    <div class="fv-screw fv-s1"></div>
+                    <div class="fv-screw fv-s2"></div>
+                    <div class="fv-screw fv-s3"></div>
+                    <div class="fv-screw fv-s4"></div>
+                    <div class="fv-line-detail"></div>
+                  </div>
+                  <div class="fv-vhs-left"></div>
+                  <div class="fv-vhs-right"></div>
+                  <div class="fv-vhs-top"></div>
+                  <div class="fv-vhs-bottom"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>{{-- /formatViewer --}}
+
+          {{-- ══ BOTONES DE FORMATO (siempre visibles abajo del poster/visor) ══ --}}
+          <div class="fmt-btns-row">
+            <button class="fmt-btn" data-fmt="dvd" onclick="switchFormat('dvd')">
+              <span>▣</span> DVD
+            </button>
+            <button class="fmt-btn" data-fmt="bluray" onclick="switchFormat('bluray')">
+              <span>◉</span> BLU-RAY
+            </button>
+            <button class="fmt-btn" data-fmt="uhd" onclick="switchFormat('uhd')">
+              <span>◈</span> UHD 4K
+            </button>
+            <button class="fmt-btn" data-fmt="vhs" onclick="switchFormat('vhs')">
+              <span>▶</span> VHS
+            </button>
+          </div>
+        </div>
         <div class="detail-info">
           <div class="detail-genre-tag" id="detailGenre">GÉNERO</div>
           <h1 class="detail-title" id="detailTitle">TÍTULO</h1>
@@ -1917,7 +2867,7 @@
   </div>
 
   <script>
-    let currentMovie = null;
+    window.currentMovie = pelicula;
     let activeGenreId = 'all';
     let filterMode = false;
     const CSRF = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -2092,7 +3042,6 @@
       document.getElementById('gridTitle').textContent = label;
     }
 
-    /* ══ OPEN DETAIL ══ */
     function openDetail(pelicula) {
       currentMovie = pelicula;
 
@@ -2340,6 +3289,148 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="{{ asset('js/alertas.js') }}"></script>
+  <script>
+    (function() {
+
+      /* ─── estado ─── */
+      let _activeFmt = null;
+
+      /* ─── switchFormat: toggle por formato ─── */
+      window.switchFormat = function(fmt) {
+
+        document.querySelectorAll('.fmt-scene').forEach(s => s.style.display = 'none');
+        document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
+
+        if (_activeFmt === fmt) {
+          /* deactivate: volver al poster */
+          _activeFmt = null;
+          document.getElementById('formatViewer').style.display = 'none';
+          document.getElementById('posterDefault').style.display = 'block';
+          return;
+        }
+
+        _activeFmt = fmt;
+
+        /* mostrar visor, ocultar poster */
+        document.getElementById('posterDefault').style.display = 'none';
+        document.getElementById('formatViewer').style.display = 'flex';
+
+        const panel = document.getElementById('fmt-' + fmt);
+        if (panel) panel.style.display = 'flex';
+
+        const btn = document.querySelector('.fmt-btn[data-fmt="' + fmt + '"]');
+        if (btn) btn.classList.add('active');
+
+        /* aplicar imágenes */
+        if (window.currentMovie) _applyImages(fmt, window.currentMovie);
+      };
+
+      function _applyImages(fmt, m) {
+        var imgs = {
+          dvd: m.imagen_dvd || m.foto_portada || m.foto_caratula || '',
+          bluray: m.imagen_bluray || m.foto_portada || m.foto_caratula || '',
+          uhd: m.imagen_uhd || m.foto_portada || m.foto_caratula || '',
+          vhs: m.imagen_vhs || m.foto_portada || m.foto_caratula || ''
+        };
+
+        if (fmt === 'dvd') {
+          // Frente: mostrar solo la parte derecha de la imagen (portada)
+          var front = document.getElementById('fvDvdFront');
+          if (front && imgs.dvd) {
+            front.style.backgroundImage = 'url("' + imgs.dvd + '")';
+            front.style.backgroundSize = 'auto 100%'; 
+            front.style.backgroundPosition = 'right center'; 
+            front.style.backgroundRepeat = 'no-repeat';
+          }
+
+          var back = document.getElementById('fvDvdBack');
+          if (back && imgs.dvd) {
+            back.style.backgroundImage = 'url("' + imgs.dvd + '")';
+            back.style.backgroundSize = 'auto 100%';
+            back.style.backgroundPosition = 'left center'; 
+            back.style.backgroundRepeat = 'no-repeat';
+          }
+
+          // Lomo: parte central
+          var left = document.getElementById('fvDvdLeft');
+          if (left && imgs.dvd) {
+            left.style.backgroundImage = 'url("' + imgs.dvd + '")';
+            left.style.backgroundSize = 'auto 100%';
+            left.style.backgroundPosition = 'center center';
+            left.style.backgroundRepeat = 'no-repeat';
+          }
+        }
+
+        if (fmt === 'bluray') {
+          _bg('fvBlurayFront', imgs.bluray);
+        }
+
+        if (fmt === 'uhd') {
+          _bg('fvUhdFront', imgs.uhd);
+        }
+
+        if (fmt === 'vhs') {
+          var cover = document.getElementById('fvVhsCover');
+          if (cover) cover.style.setProperty('--cover', 'url("' + imgs.vhs + '")');
+          var title = document.getElementById('fvVhsTitle');
+          if (title) title.textContent = (m.titulo || '').substring(0, 14).toUpperCase();
+        }
+      }
+
+      function _bg(id, url) {
+        var el = document.getElementById(id);
+        if (el && url) el.style.backgroundImage = 'url("' + url + '")';
+      }
+
+      /* ─── Hook openDetail: resetear al abrir nueva película ─── */
+      var _orig = window.openDetail;
+      window.openDetail = function(pelicula) {
+        /* reset formato activo */
+        _activeFmt = null;
+        document.querySelectorAll('.fmt-scene').forEach(s => s.style.display = 'none');
+        document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('formatViewer').style.display = 'none';
+        document.getElementById('posterDefault').style.display = 'block';
+
+        _orig(pelicula);
+      };
+
+      /* ─── Mouse sheen en discos ─── */
+      document.addEventListener('mousemove', function(e) {
+        ['fvBluraySheen', 'fvUhdSheen'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          var disc = el.closest('.fv-disc');
+          if (!disc) return;
+          var r = disc.getBoundingClientRect();
+          var x = Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100));
+          var y = Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100));
+          el.style.setProperty('--sheen-x', ((x - 50) * 0.5 + 50) + '%');
+          el.style.setProperty('--sheen-y', ((y - 50) * 0.5 + 50) + '%');
+        });
+      });
+
+      /* ─── UHD hover: acelerar efectos ─── */
+      document.addEventListener('DOMContentLoaded', function() {
+        var uhdDisc = document.getElementById('fvUhd');
+        if (!uhdDisc) return;
+        uhdDisc.addEventListener('mouseenter', function() {
+          ['fv-rainbow-ring', 'fv-diffraction'].forEach(function(cls) {
+            var el = uhdDisc.querySelector('.' + cls);
+            if (el) el.style.animationDuration = '1.5s';
+          });
+        });
+        uhdDisc.addEventListener('mouseleave', function() {
+          ['fv-rainbow-ring', 'fv-diffraction'].forEach(function(cls) {
+            var el = uhdDisc.querySelector('.' + cls);
+            if (el) el.style.animationDuration = '';
+          });
+        });
+      });
+
+    })();
+  </script>
+
 </body>
 
 </html>
