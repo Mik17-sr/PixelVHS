@@ -11,7 +11,11 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\ActorController;
+use App\Http\Controllers\CintaController;
+use App\Http\Controllers\ListaEsperaController;
 use App\Http\Controllers\PeliculaController;
+use App\Http\Controllers\PrestamoController;
+use App\Http\Controllers\PagoController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 
@@ -25,9 +29,19 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Vistas
 Route::middleware(['auth', 'role:socio'])->group(function () {
-    Route::get('/principal',
-        [PrincipalController::class, 'mostrarPrincipal']
-    )->name('principal');
+    Route::get('/principal', [PrincipalController::class, 'mostrarPrincipal'])->name('principal');
+    Route::get('/socio/datos', [PrestamoController::class, 'datosSocio'])->name('socio.datos');
+    Route::post('/rentas', [PrestamoController::class, 'crear'])->name('rentas.crear');
+    Route::get('/mis-rentas', [PrestamoController::class, 'misRentas'])->name('rentas.mis');
+    Route::post('/lista-espera', [ListaEsperaController::class, 'unirse'])->name('lista-espera.unirse');
+    Route::delete('/lista-espera/{id}', [ListaEsperaController::class, 'salir'])->name('lista-espera.salir');
+    Route::post('/pago/pse/abrir', [PagoController::class, 'abrirPSE'])->name('pago.pse.abrir');
+    Route::post('/pago/pse/confirmar', [PagoController::class, 'confirmarPSE'])->name('pago.pse.confirmar');
+    Route::post('/notificaciones/leer-todas', function () {
+    auth()->user()->unreadNotifications->markAsRead();
+        return response()->json(['ok' => true]);
+    })->name('notificaciones.leer');
+    Route::post('/prestamos/{id}/cancelar', [PrestamoController::class, 'cancelar'])->name('prestamos.cancelar');
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
@@ -35,6 +49,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         [DashboardAdminController::class, 'mostrarPrincipal']
     )->name('dashboard.admin');
 });
+
+Route::post('empleado/prestamos/{id}/cancelar-admin', 
+    [PrestamoController::class, 'cancelarAdmin']);
 
 Route::middleware(['auth', 'role:empleado'])->group(function () {
     Route::get('/dashboard_empleado',
@@ -110,8 +127,22 @@ Route::middleware(['auth', 'role:empleado'])
         [ActorController::class, 'destroy'])
      ->name('actores.destroy');
 
-     Route::post('/peliculas/registrar', 
+    Route::post('/peliculas/registrar', 
         [PeliculaController::class, 'registrarPelicula'])
     ->name('peliculas.registrar');
+
+    Route::post('/cintas/lote', 
+        [CintaController::class, 'storeLote'])
+    ->name('cintas.lote');
+
+    Route::get('/cintas', [CintaController::class, 'index'])->name('cintas.index');
+    Route::post('/cintas/{id}/estado', [CintaController::class, 'cambiarEstado'])->name('cintas.estado');
+
+    Route::get('/prestamos', [PrestamoController::class, 'index'])->name('prestamos.index');
+    Route::post('/prestamos/{id}/devolver', [PrestamoController::class, 'devolver'])->name('prestamos.devolver');
+    Route::post('/prestamos/{id}/cancelar', [PrestamoController::class, 'cancelar'])->name('prestamos.cancelar');
+    Route::post('/prestamos/{id}/pago', [PrestamoController::class, 'registrarPago'])->name('prestamos.pago');
+    Route::post('/prestamos/{id}/cancelar-admin', 
+    [PrestamoController::class, 'cancelarAdmin']);
 });
 

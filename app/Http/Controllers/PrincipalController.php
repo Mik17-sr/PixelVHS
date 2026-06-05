@@ -14,19 +14,22 @@ class PrincipalController extends Controller
         $generos = Genero::all();
  
         $peliculasDestacadas = Pelicula::with([
-            'genero', 'director', 'actores', 'cintas',
-            'portadas.formato', 
+            'genero', 'director', 'actores',
+            'cintas.formato',
+            'portadas.formato',
         ])->limit(8)->get();
+
  
         $peliculasPorGenero = [];
         foreach ($generos as $genero) {
             $peliculasPorGenero[$genero->nombre] = Pelicula::where('id_genero', $genero->id_genero)
-                ->with([
-                    'genero', 'director', 'actores', 'cintas',
-                    'portadas.formato', 
-                ])->get();
+            ->with([
+                'genero', 'director', 'actores',
+                'cintas.formato',
+                'portadas.formato',
+            ])->get();
         }
- 
+        
         return view('principal', [
             'peliculasDestacadas' => $peliculasDestacadas,
             'generos'             => $generos,
@@ -40,7 +43,7 @@ class PrincipalController extends Controller
  
         $resultados = Pelicula::where('titulo', 'LIKE', "%{$query}%")
             ->orWhere('resumen', 'LIKE', "%{$query}%")
-            ->with(['genero', 'director', 'actores', 'cintas', 'portadas.formato'])
+            ->with(['genero', 'director', 'actores', 'cintas.formato', 'portadas.formato'])
             ->get();
  
         return response()->json($resultados);
@@ -49,7 +52,7 @@ class PrincipalController extends Controller
     public function obtenerPorGenero($idGenero)
     {
         $peliculas = Pelicula::where('id_genero', $idGenero)
-            ->with(['genero', 'director', 'actores', 'cintas', 'portadas.formato'])
+            ->with(['genero', 'director', 'actores', 'cintas.formato', 'portadas.formato'])
             ->get();
  
         return response()->json($peliculas);

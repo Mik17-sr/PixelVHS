@@ -7,7 +7,6 @@ window.alertaRetro = ({
 
     Swal.fire({
         title: titulo,
-
         html: `
             <div class="retro-alert-content">
                 ${texto}

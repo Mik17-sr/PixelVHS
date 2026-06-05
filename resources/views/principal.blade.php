@@ -2314,7 +2314,16 @@
   'genero' => $pelicula->genero,
   'director' => $pelicula->director,
   'actores' => $pelicula->actores,
-  'cintas' => $pelicula->cintas,
+  'cintas' => $pelicula->cintas->map(fn($c) => [
+  'id_cinta' => $c->id_cinta,
+  'rentada' => $c->rentada,
+  'estado' => $c->estado,
+  'id_formato' => $c->id_formato,
+  'formato' => [
+  'nombre' => $c->formato?->nombre,
+  'multiplicador' => (float) ($c->formato?->multiplicador ?? 1),
+  ],
+  ]),
   'imagen_dvd' => $portadas['dvd'],
   'imagen_bluray' => $portadas['bluray'],
   'imagen_uhd' => $portadas['uhd'],
@@ -2341,7 +2350,16 @@
   'genero' => $pelicula->genero,
   'director' => $pelicula->director,
   'actores' => $pelicula->actores,
-  'cintas' => $pelicula->cintas,
+  'cintas' => $pelicula->cintas->map(fn($c) => [
+  'id_cinta' => $c->id_cinta,
+  'rentada' => $c->rentada,
+  'estado' => $c->estado,
+  'id_formato' => $c->id_formato,
+  'formato' => [
+  'nombre' => $c->formato?->nombre,
+  'multiplicador' => (float) ($c->formato?->multiplicador ?? 1),
+  ],
+  ]),
   'imagen_dvd' => $portadas['dvd'],
   'imagen_bluray' => $portadas['bluray'],
   'imagen_uhd' => $portadas['uhd'],
@@ -2352,6 +2370,12 @@
   @endphp
   <script>
     window.MOVIE_MAP = @json($movieMap);
+    window.ROUTES = {
+      socioDatos: @json(route('socio.datos')),
+      rentasCrear: @json(route('rentas.crear')),
+      rentasMis: @json(route('rentas.mis')),
+      listaEsperaUnirse: @json(route('lista-espera.unirse')),
+    };
   </script>
 
   <!-- ══ MAIN VIEW ══ -->
@@ -2367,11 +2391,71 @@
       </div>
       <div class="nav-right">
         <button class="ico-btn" id="sBtn" onclick="toggleSearch()">⌕ &nbsp;BUSCAR</button>
+        <div style="position:relative;">
+          <button class="ico-btn" id="notifBtn" onclick="toggleNotifs()">
+            NOTIFICACIONES
+            @php $unread = auth()->user()->unreadNotifications->count(); @endphp
+            @if($unread > 0)
+            <span id="notifBadge" style="
+                      position:absolute; top:-4px; right:-4px;
+                      background:var(--v); color:var(--w);
+                      font-family:var(--fo); font-size:7px;
+                      width:16px; height:16px; border-radius:50%;
+                      display:flex; align-items:center; justify-content:center;
+                      letter-spacing:0;">{{ $unread }}</span>
+            @endif
+          </button>
+
+          <div id="notifDropdown" style="
+                  display:none; position:absolute; top:100%; right:0; margin-top:8px;
+                  background:var(--ink2); border:1px solid rgba(123,94,167,.3);
+                  width:320px; max-height:400px; overflow-y:auto;
+                  box-shadow:0 10px 40px rgba(0,0,0,.8); z-index:300;">
+
+            <div style="padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.05);
+                              display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--g);">
+                NOTIFICACIONES
+              </span>
+              <button onclick="marcarTodasLeidas()" style="
+                          font-family:var(--fm);font-size:8px;letter-spacing:1px;
+                          color:var(--v-dim);background:transparent;border:none;cursor:pointer;">
+                ✓ MARCAR LEÍDAS
+              </button>
+            </div>
+
+            @forelse(auth()->user()->notifications->take(10) as $notif)
+            <div style="
+                      padding:14px 16px;
+                      border-bottom:1px solid rgba(255,255,255,.03);
+                      background:{{ $notif->read_at ? 'transparent' : 'rgba(123,94,167,.06)' }};
+                      border-left:2px solid {{ $notif->read_at ? 'transparent' : 'var(--v)' }};
+                      cursor:pointer;"
+              onclick="irAPelicula('{{ $notif->id }}')">
+              <div style="font-family:var(--fh);font-size:13px;letter-spacing:2px;color:var(--w);">
+                {{ strtoupper($notif->data['titulo'] ?? '—') }}
+              </div>
+              <div style="font-family:var(--fm);font-size:8px;letter-spacing:1px;color:var(--g);margin-top:4px;">
+                {{ strtoupper($notif->data['formato'] ?? '') }} · DISPONIBLE AHORA
+              </div>
+              <div style="font-family:var(--fm);font-size:7px;color:var(--v-dim);margin-top:4px;">
+                {{ $notif->created_at->diffForHumans() }}
+              </div>
+            </div>
+            @empty
+            <div style="padding:24px;text-align:center;font-family:var(--fm);
+                              font-size:9px;letter-spacing:2px;color:var(--g);">
+              SIN NOTIFICACIONES
+            </div>
+            @endforelse
+
+          </div>
+        </div>
         <div class="user-menu-container">
           <button class="ico-btn" id="userBtn" onclick="toggleUserMenu()">👤 PERFIL</button>
           <div class="user-dropdown" id="userDropdown">
             <div class="dropdown-item" onclick="navigatePerfil()">◈ MI PERFIL</div>
-            <div class="dropdown-item">⬡ MIS RENTAS</div>
+            <div class="dropdown-item" onclick="navigateMisRentas()">⬡ MIS RENTAS</div>
             <form method="POST" action="{{ route('logout') }}" id="logoutForm">
               @csrf
               <div class="dropdown-item logout" onclick="document.getElementById('logoutForm').submit()">
@@ -2444,7 +2528,10 @@
               <h3>{{ strtoupper($pelicula->titulo) }}</h3>
               <p>{{ strtoupper($pelicula->genero->nombre ?? 'N/A') }} · {{ $pelicula->anio_lanzamiento }}</p>
               <div class="acts">
-                <button class="btn-info" onclick="event.stopPropagation(); openDetail({{ json_encode($pelicula) }})">VER MÁS</button>
+                <button class="btn-info"
+                  onclick="event.stopPropagation(); openDetail(window.MOVIE_MAP[{{ $pelicula->id_pelicula }}])">
+                  VER MÁS
+                </button>
                 <button class="btn-wish" onclick="event.stopPropagation()">♡</button>
               </div>
             </div>
@@ -2461,11 +2548,11 @@
         </div>
         <div class="scroll-row" id="rowRecientes">
           @foreach($peliculasDestacadas->sortByDesc('created_at')->take(10) as $pelicula)
-          @php $disponibles = $pelicula->cintas->where('rentada', 0)->count() ?? $pelicula->cintas->count(); @endphp
+          @php $disponibles = $pelicula->cintas->where('rentada', 0)->count(); @endphp
           <div class="card"
             data-genre="{{ $pelicula->genero->id_genero ?? 'n/a' }}"
             data-title="{{ strtolower($pelicula->titulo) }}"
-            onclick="openDetail({{ json_encode($pelicula) }})">
+            onclick="openDetail(window.MOVIE_MAP[{{ $pelicula->id_pelicula }}])">
             @if($pelicula->clasificacion)
             <div class="b-rating">{{ $pelicula->clasificacion }}</div>
             @endif
@@ -2485,7 +2572,10 @@
               <h3>{{ strtoupper($pelicula->titulo) }}</h3>
               <p>{{ strtoupper($pelicula->genero->nombre ?? 'N/A') }} · {{ $pelicula->anio_lanzamiento }}</p>
               <div class="acts">
-                <button class="btn-info" onclick="event.stopPropagation(); openDetail({{ json_encode($pelicula) }})">VER MÁS</button>
+                <button class="btn-info"
+                  onclick="event.stopPropagation(); openDetail(window.MOVIE_MAP[{{ $pelicula->id_pelicula }}])">
+                  VER MÁS
+                </button>
                 <button class="btn-wish" onclick="event.stopPropagation()">♡</button>
               </div>
             </div>
@@ -2506,11 +2596,11 @@
         </div>
         <div class="scroll-row">
           @foreach($peliculasPorGenero[$genero->nombre] as $pelicula)
-          @php $disponibles = $pelicula->cintas->where('rentada', 0)->count() ?? $pelicula->cintas->count(); @endphp
+          @php $disponibles = $pelicula->cintas->where('rentada', 0)->count(); @endphp
           <div class="card"
             data-genre="{{ $pelicula->genero->id_genero ?? 'n/a' }}"
             data-title="{{ strtolower($pelicula->titulo) }}"
-            onclick="openDetail({{ json_encode($pelicula) }})">
+            onclick="openDetail(window.MOVIE_MAP[{{ $pelicula->id_pelicula }}])">
             @if($pelicula->clasificacion)
             <div class="b-rating">{{ $pelicula->clasificacion }}</div>
             @endif
@@ -2530,7 +2620,10 @@
               <h3>{{ strtoupper($pelicula->titulo) }}</h3>
               <p>{{ strtoupper($pelicula->genero->nombre ?? 'N/A') }} · {{ $pelicula->anio_lanzamiento }}</p>
               <div class="acts">
-                <button class="btn-info" onclick="event.stopPropagation(); openDetail({{ json_encode($pelicula) }})">VER MÁS</button>
+                <button class="btn-info"
+                  onclick="event.stopPropagation(); openDetail(window.MOVIE_MAP[{{ $pelicula->id_pelicula }}])">
+                  VER MÁS
+                </button>
                 <button class="btn-wish" onclick="event.stopPropagation()">♡</button>
               </div>
             </div>
@@ -2679,6 +2772,34 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+  <div class="view" id="view-mis-rentas" style="display:none; padding:40px 52px;">
+    <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:32px; padding-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05);">
+      <div>
+        <h2 style="font-family:var(--fh); font-size:34px; letter-spacing:6px; color:var(--w); line-height:1;">MIS RENTAS</h2>
+        <small style="font-family:var(--fm); font-size:9px; color:var(--g); letter-spacing:2px; display:block; margin-top:5px;">// HISTORIAL Y DEVOLUCIONES</small>
+      </div>
+      <button onclick="navigateHome()" style="
+    font-family:var(--fm);
+    font-size:10px;
+    letter-spacing:2px;
+    color:var(--g);
+    background:transparent;
+    border:1px solid var(--g-dark);
+    padding:8px 18px;
+    cursor:pointer;
+    transition:all .18s;
+    display:flex;
+    align-items:center;
+    gap:8px;"
+        onmouseover="this.style.borderColor='var(--v)'; this.style.color='var(--w)'"
+        onmouseout="this.style.borderColor='var(--g-dark)'; this.style.color='var(--g)'">
+        ← VOLVER AL CATÁLOGO
+      </button>
+    </div>
+    <div id="misRentasContent" style="display:grid; grid-template-columns:1fr; gap:18px;">
+      <div style="font-family:var(--fm); font-size:9px; letter-spacing:2px; color:var(--g);">Cargando tus rentas...</div>
     </div>
   </div>
   <!-- ══ VHS SLOT ══ -->
@@ -2864,10 +2985,49 @@
         </div>
       </div>
     </div>
+    <div id="carritoFlotante" style="
+  display: none;
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 5000;
+">
+      <button onclick="abrirModalCarrito()" style="
+    font-family: var(--fo);
+    font-size: 9px;
+    letter-spacing: 2px;
+    background: var(--v);
+    color: var(--w);
+    border: none;
+    padding: 13px 22px;
+    cursor: pointer;
+    box-shadow: 0 8px 32px rgba(123,94,167,.45);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all .2s;
+  "
+        onmouseover="this.style.background='#9370C8'"
+        onmouseout="this.style.background='var(--v)'">
+        <span style="font-size:15px; line-height:1;"></span>
+        VER CARRITO
+        <span id="carritoFlotanteCnt" style="
+      background: var(--w);
+      color: var(--v);
+      font-family: var(--fo);
+      font-size: 8px;
+      letter-spacing: 1px;
+      padding: 2px 7px;
+      border-radius: 2px;
+      font-weight: 700;
+    ">0</span>
+      </button>
+    </div>
   </div>
 
   <script>
-    window.currentMovie = pelicula;
+    const BASE_URL = "http://localhost/PixelVHS/public";
+    window.currentMovie = null;
     let activeGenreId = 'all';
     let filterMode = false;
     const CSRF = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -2879,13 +3039,321 @@
     }
 
     function navigatePerfil() {
+      document.getElementById('userDropdown').classList.remove('active');
       document.getElementById('mainView').style.display = 'none';
+      document.getElementById('view-mis-rentas').style.display = 'none';
       document.getElementById('view-perfil').style.display = 'block';
+    }
+
+    function navigateMisRentas() {
+      document.getElementById('userDropdown').classList.remove('active');
+      document.getElementById('mainView').style.display = 'none';
+      document.getElementById('view-perfil').style.display = 'none';
+      document.getElementById('view-mis-rentas').style.display = 'block';
+      cargarMisRentas();
     }
 
     function navigateHome() {
       document.getElementById('view-perfil').style.display = 'none';
+      document.getElementById('view-mis-rentas').style.display = 'none';
       document.getElementById('mainView').style.display = 'block';
+    }
+
+    async function cargarMisRentas() {
+      const container = document.getElementById('misRentasContent');
+      container.innerHTML = `<div style="font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--g);">Cargando tus rentas...</div>`;
+
+      try {
+        const res = await fetch(window.ROUTES?.rentasMis || '/mis-rentas', {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        renderMisRentas(data.prestamos || [], data.lista_espera || []);
+      } catch (err) {
+        container.innerHTML = `<div style="font-family:var(--fm);font-size:9px;color:var(--red);">Error al cargar rentas.</div>`;
+      }
+    }
+
+    function formatDateTime(value) {
+      if (!value) return '—';
+      const date = new Date(value);
+      if (isNaN(date)) return value;
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    }
+
+    function renderMisRentas(prestamos, listaEspera = []) {
+      const container = document.getElementById('misRentasContent');
+
+      // ── Sección lista de espera ──
+      const listaHtml = listaEspera.length ? `
+          <div style="margin-bottom:28px;">
+              <div style="font-family:var(--fh);font-size:18px;letter-spacing:4px;color:var(--w);margin-bottom:14px;">
+                  LISTA DE ESPERA
+              </div>
+              ${listaEspera.map(e => `
+                  <div style="background:var(--ink2);border:1px solid rgba(212,160,23,.2);border-left:3px solid var(--amber);
+                              padding:16px 20px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                      <div>
+                          <div style="font-family:var(--fh);font-size:16px;letter-spacing:2px;color:var(--w);">
+                              ${e.pelicula}
+                          </div>
+                          <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-top:4px;">
+                              ${e.formato} · POSICIÓN #${e.posicion}
+                              ${e.notificado ? ' · <span style="color:#4CAF6A;">◉ DISPONIBLE</span>' : ''}
+                          </div>
+                          <div style="font-family:var(--fm);font-size:8px;letter-spacing:1px;color:var(--g);margin-top:2px;">
+                              En espera desde: ${formatDateTime(e.fecha_solicitud)}
+                          </div>
+                      </div>
+                      <button onclick="salirListaEspera(${e.id_lista_espera})"
+                          style="font-family:var(--fo);font-size:8px;letter-spacing:2px;background:transparent;
+                                color:var(--g);border:1px solid var(--g-dark);padding:8px 16px;cursor:pointer;transition:all .18s;white-space:nowrap;"
+                          onmouseover="this.style.borderColor='#c0392b';this.style.color='#c0392b'"
+                          onmouseout="this.style.borderColor='var(--g-dark)';this.style.color='var(--g)'">
+                          ✕ SALIR DE FILA
+                      </button>
+                  </div>
+              `).join('')}
+          </div>
+      ` : '';
+
+      // ── Sección préstamos ──
+      const prestamosHtml = !prestamos.length ?
+        `<div style="font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--g);">No tienes préstamos registrados.</div>` :
+        prestamos.map(p => {
+          // ...tu código existente de renderMisRentas para cada préstamo...
+          const isActive = String(p.estado).toLowerCase() === 'activo';
+          const isPendiente = String(p.estado).toLowerCase() === 'pendiente';
+          const statusColor = isActive ? 'var(--v)' : isPendiente ? '#ffd700' : 'var(--g)';
+          const diasRestantes = p.dias_restantes != null ?
+            `${p.dias_restantes} día${Math.abs(p.dias_restantes) !== 1 ? 's' : ''}` :
+            '—';
+          const vencidoLabel = p.vencido ? ' (VENCIDO)' : '';
+
+          const cintasHtml = (p.cintas || []).map(c => `
+                  <div style="font-family:var(--fm);font-size:8px;letter-spacing:1px;color:var(--w);margin-bottom:3px;">
+                      • ${c.pelicula} · ${c.formato} · $${Number(c.precio).toLocaleString('es-CO')}
+                  </div>
+              `).join('');
+
+          const multasHtml = (p.multas || []).length ? `
+                  <div style="margin-top:10px;font-family:var(--fm);font-size:8px;letter-spacing:1px;color:var(--g);">
+                      MULTAS:
+                      ${(p.multas || []).map(m =>
+                          `<div>• ${m.concepto}: $${Number(m.valor).toLocaleString('es-CO')} ${m.pagada ? '(PAGADA)' : '(PENDIENTE)'}</div>`
+                      ).join('')}
+                  </div>
+              ` : '';
+
+          const botonPagoHtml = isPendiente ? `
+                  <div style="margin-top:16px;padding:14px 18px;border-top:1px solid rgba(255,255,255,.05);background:rgba(42,111,70,.06);">
+                      <div style="font-family:var(--fm);font-size:8px;letter-spacing:1px;color:var(--g);margin-bottom:10px;">
+                          Tu renta está pendiente de pago para activarse.
+                      </div>
+                      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                          <button onclick="abrirModalPagoPSE(${p.id_prestamo}, ${p.dias_totales || 3}, ${p.monto_total || 0})"
+                              style="font-family:var(--fo);font-size:9px;letter-spacing:2px;background:#2a6f46;color:#fff;
+                                    border:none;padding:10px 22px;cursor:pointer;transition:all .2s;"
+                              onmouseover="this.style.background='#1f4d32'"
+                              onmouseout="this.style.background='#2a6f46'">
+                              ✓ PAGAR AHORA
+                          </button>
+                          <button onclick="cancelarPrestamo(${p.id_prestamo})"
+                              style="font-family:var(--fo);font-size:9px;letter-spacing:2px;background:#8b1e1e;color:#fff;
+                                    border:none;padding:10px 22px;cursor:pointer;transition:all .2s;"
+                              onmouseover="this.style.background='#651515'"
+                              onmouseout="this.style.background='#8b1e1e'">
+                              ✕ CANCELAR RENTA
+                          </button>
+                      </div>
+                  </div>
+              ` : '';
+
+          const infoConsulta = isActive ? `
+                  <div style="margin-top:16px;padding:14px 18px;border-top:1px solid rgba(255,255,255,.05);background:rgba(79,46,140,.08);">
+                      <div style="font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--g);">
+                          Para devolver o cancelar este préstamo, contacta al empleado.
+                      </div>
+                  </div>
+              ` : '';
+
+          return `
+                  <div style="background:var(--ink2);border:1px solid rgba(123,94,167,.2);border-radius:6px;overflow:hidden;">
+                      <div style="padding:22px;">
+                          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+                              <div>
+                                  <div style="font-family:var(--fm);font-size:10px;letter-spacing:2px;color:var(--g);margin-bottom:6px;">
+                                      PRÉSTAMO #${String(p.id_prestamo).padStart(4,'0')}
+                                  </div>
+                                  <div style="font-family:var(--fh);font-size:18px;letter-spacing:2px;color:var(--w);">
+                                      ${p.estado.toUpperCase()}
+                                  </div>
+                              </div>
+                              <div style="text-align:right;min-width:160px;">
+                                  <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:${statusColor};">
+                                      ${diasRestantes}${vencidoLabel}
+                                  </div>
+                                  <div style="font-family:var(--fm);font-size:8px;letter-spacing:1px;color:var(--g);margin-top:6px;">
+                                      Inicio: ${formatDateTime(p.fecha_inicio)}
+                                  </div>
+                                  <div style="font-family:var(--fm);font-size:8px;letter-spacing:1px;color:var(--g);">
+                                      Límite: ${formatDateTime(p.fecha_limite)}
+                                  </div>
+                              </div>
+                          </div>
+                          <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,.05);padding-top:14px;">
+                              ${cintasHtml}
+                              ${multasHtml}
+                              ${p.observaciones
+                                  ? `<div style="margin-top:10px;font-family:var(--fm);font-size:8px;letter-spacing:1px;color:var(--g);">OBS: ${p.observaciones}</div>`
+                                  : ''}
+                          </div>
+                      </div>
+                      ${botonPagoHtml}
+                      ${infoConsulta}
+                  </div>
+              `;
+        }).join('');
+
+      container.innerHTML = listaHtml + prestamosHtml;
+    }
+    async function salirListaEspera(id) {
+      const confirmado = await alertaConfirmar({
+        titulo: 'SALIR DE LA FILA',
+        texto: '<p>¿Deseas salir de la lista de espera para esta película?</p>',
+        icono: 'warning',
+        boton: 'SALIR',
+        cancelar: true
+      });
+
+      if (!confirmado.isConfirmed) return;
+
+      try {
+        const res = await fetch(`${BASE_URL}/lista-espera/${id}`, {
+          method: 'DELETE',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+          }
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        await alertaRetro({
+          titulo: 'LISTO',
+          texto: '<p>Saliste de la lista de espera.</p>',
+          icono: 'success'
+        });
+
+        cargarMisRentas();
+      } catch (err) {
+        alertaRetro({
+          titulo: 'ERROR',
+          texto: '<p>No se pudo procesar la solicitud.</p>',
+          icono: 'error'
+        });
+      }
+    }
+
+    async function devolverPrestamo(id) {
+      const confirm = await alertaConfirmar({
+        titulo: 'CONFIRMAR DEVOLUCIÓN',
+        texto: '<p>¿Deseas devolver este préstamo ahora?</p>',
+        icono: 'warning',
+        boton: 'DEVOLVER',
+        cancelar: true
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      try {
+        const url = `/prestamos/${id}/devolver`;
+        const res = await fetch(url, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+          }
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => null);
+          throw new Error(errorData?.message || `HTTP ${res.status}`);
+        }
+
+        alertaRetro({
+          titulo: 'DEVOLUCIÓN COMPLETADA',
+          texto: '<p>Tu préstamo fue devuelto correctamente.</p>',
+          icono: 'success'
+        });
+        cargarMisRentas();
+      } catch (err) {
+        console.error('Error al devolver préstamo:', err);
+        alertaRetro({
+          titulo: 'ERROR EN DEVOLUCIÓN',
+          texto: `<p>${err.message}</p>`,
+          icono: 'error'
+        });
+      }
+    }
+
+    async function cancelarPrestamo(id) {
+      const confirm = await alertaConfirmar({
+        titulo: 'CONFIRMAR CANCELACIÓN',
+        texto: '<p>¿Deseas cancelar este préstamo?</p>',
+        icono: 'warning',
+        boton: 'CANCELAR',
+        cancelar: true
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      try {
+        const url = `${BASE_URL}/prestamos/${id}/cancelar`;
+        console.log(url);
+        console.log(window.location.origin);
+        console.log(window.location.href);
+        const res = await fetch(url, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+          }
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => null);
+          throw new Error(errorData?.message || `HTTP ${res.status}`);
+        }
+
+        alertaRetro({
+          titulo: 'PRÉSTAMO CANCELADO',
+          texto: '<p>El préstamo fue cancelado correctamente.</p>',
+          icono: 'success'
+        });
+        cargarMisRentas();
+      } catch (err) {
+        console.error('Error al cancelar préstamo:', err);
+        alertaRetro({
+          titulo: 'ERROR EN CANCELACIÓN',
+          texto: `<p>${err.message}</p>`,
+          icono: 'error'
+        });
+      }
     }
     document.addEventListener('click', (e) => {
       const uc = document.querySelector('.user-menu-container');
@@ -2922,7 +3390,7 @@
 
       const results = Object.values(window.MOVIE_MAP).filter(m => {
         const genreMatch = activeGenreId === 'all' ||
-          String(m.genero?.id_genero) === String(activeGenreId);
+          String(m.genero?.id_genero ?? m.genero ?? '') === String(activeGenreId);
         const textMatch = !q ||
           m.titulo.toLowerCase().includes(q) ||
           (m.director?.nombre || '').toLowerCase().includes(q) ||
@@ -3012,7 +3480,7 @@
     function setGenre(el, g) {
       document.querySelectorAll('.tag').forEach(t => t.classList.remove('on'));
       el.classList.add('on');
-      activeGenreId = g;
+      activeGenreId = g === 'all' ? 'all' : String(g);
 
       const q = document.getElementById('sInput').value.toLowerCase().trim();
 
@@ -3090,7 +3558,10 @@
         stats.map(s => `<div class="stat-cell"><div class="label">${s.l}</div><div class="value">${s.v}</div></div>`).join('');
 
       const cintas = pelicula.cintas || [];
-      const disponibles = cintas.filter(c => !c.rentada || c.rentada == 0).length;
+      const disponibles = cintas.filter(c => {
+        const estado = (c.estado || '').toLowerCase().trim();
+        return estado === 'disponible' || c.rentada === 0 || c.rentada === '0' || c.rentada === false;
+      }).length;
       const total = cintas.length;
       const score = pelicula.puntuacion != null ?
         pelicula.puntuacion :
@@ -3116,8 +3587,8 @@
       const rentBtn = document.getElementById('detailRentBtn');
       const rentedBanner = document.getElementById('detailRented');
       if (disponibles === 0) {
-        rentBtn.textContent = 'NO DISPONIBLE';
-        rentBtn.classList.add('disabled');
+        rentBtn.textContent = 'UNIRME A LISTA DE ESPERA';
+        rentBtn.classList.remove('disabled');
         rentedBanner.style.display = 'block';
       } else {
         rentBtn.textContent = '+ RENTAR';
@@ -3160,15 +3631,869 @@
     }
 
     /* ══ RENTAR ══ */
-    function handleRent(event) {
+    let carritoRentas = [];
+    let datosFormatoModal = null;
+    let datosSocioActual = null;
+
+    async function cargarDatosSocio() {
+      try {
+        const url = window.ROUTES?.socioDatos || '/socio/datos';
+        const res = await fetch(url, {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+          }
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok) {
+          let message = `HTTP ${res.status} ${res.statusText}`;
+          if (contentType.includes('application/json')) {
+            const errorData = await res.json();
+            message = errorData?.message || errorData?.error || message;
+          }
+          throw new Error(message);
+        }
+
+        if (!contentType.includes('application/json')) {
+          throw new Error('Respuesta inesperada del servidor');
+        }
+
+        datosSocioActual = await res.json();
+      } catch (err) {
+        console.error('Error al cargar datos del socio:', err);
+        alertaRetro({
+          titulo: 'ERROR AL CARGAR DATOS',
+          texto: `<p>No se pudieron obtener los datos del socio. ${err.message}</p>`,
+          icono: 'error'
+        });
+      }
+    }
+
+    async function handleRent(event) {
       event.preventDefault();
       if (!currentMovie) return;
-      alert('Funcionalidad de renta será implementada en el controlador');
+
+      if (!datosSocioActual) await cargarDatosSocio();
+
+      const cintas = (currentMovie.cintas || []).filter(c => {
+        const estado = (c.estado || '').toLowerCase().trim();
+        return estado === 'disponible' || c.rentada === 0 || c.rentada === '0' || c.rentada === false;
+      });
+
+      if (!cintas.length) {
+        abrirModalListaEsperaGeneral(currentMovie);
+        return;
+      }
+
+      datosFormatoModal = {
+        pelicula: currentMovie,
+        cintas: cintas
+      };
+
+      abrirModalSeleccionarCinta(currentMovie, cintas);
+    }
+
+    function abrirModalSeleccionarCinta(pelicula, cintas) {
+      const porFormato = {};
+      cintas.forEach(c => {
+        const fmt = c.formato?.nombre ?? `Formato ${c.id_formato}`;
+        const mult = parseFloat(c.formato?.multiplicador) || 1;
+        if (!porFormato[fmt]) porFormato[fmt] = {
+          cintas: [],
+          multiplicador: mult
+        };
+        porFormato[fmt].cintas.push(c);
+      });
+
+      const todasCintas = pelicula.cintas || [];
+      const formatosNoDisponibles = new Map();
+      todasCintas.forEach(c => {
+        const estado = (c.estado || '').toLowerCase().trim();
+        const disponible = estado === 'disponible' || c.rentada === 0;
+        const fmt = c.formato?.nombre ?? `Formato ${c.id_formato}`;
+        if (!disponible && c.id_formato && !porFormato[fmt]) {
+          if (!formatosNoDisponibles.has(c.id_formato)) {
+            formatosNoDisponibles.set(c.id_formato, fmt);
+          }
+        }
+      });
+
+      const precioBase = parseFloat(pelicula.precio_alquiler || 0);
+      const fmtHtml = Object.entries(porFormato).map(([fmt, grupo]) => {
+        const precioDia1 = precioBase * grupo.multiplicador;
+
+        return `
+            <div style="margin-bottom:12px;">
+                <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--v);margin-bottom:8px;">
+                    ${fmt} · ${grupo.cintas.length} DISPONIBLE${grupo.cintas.length > 1 ? 'S' : ''}
+                    <span style="margin-left:8px;color:var(--g);">
+                        $${Number(precioDia1).toLocaleString('es-CO')} primer día
+                    </span>
+                </div>
+                ${grupo.cintas.map(c => `
+                    <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;
+                                  background:var(--ink3);border:1px solid var(--g-dark);
+                                  margin-bottom:4px;cursor:pointer;transition:border-color .15s;"
+                        onmouseover="this.style.borderColor='var(--v-dim)'"
+                        onmouseout="this.style.borderColor='var(--g-dark)'">
+                        <input type="radio" name="cinta_seleccionar" value="${c.id_cinta}"
+                            data-precio-base="${precioBase}"
+                            data-multiplicador="${grupo.multiplicador}"
+                            data-pelicula-id="${pelicula.id_pelicula}"
+                            data-pelicula-titulo="${pelicula.titulo.toUpperCase()}"
+                            style="accent-color:var(--v);width:14px;height:14px;">
+                        <span style="font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--w);">
+                            #${String(c.id_cinta).padStart(5,'0')} - ${fmt}
+                        </span>
+                        <span style="font-family:var(--fo);font-size:9px;color:var(--v);margin-left:auto;">
+                            $${Number(precioDia1).toLocaleString('es-CO')}
+                        </span>
+                    </label>
+                `).join('')}
+            </div>`;
+      }).join('');
+      const esperaHtml = formatosNoDisponibles.size ? `
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.05);">
+              <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:10px;">
+                  FORMATOS NO DISPONIBLES · UNIRSE A LISTA DE ESPERA
+              </div>
+              ${[...formatosNoDisponibles.entries()].map(([id, nombre]) => `
+                  <div style="display:flex;align-items:center;justify-content:space-between;
+                              padding:8px 12px;background:var(--ink3);border:1px solid var(--g-dark);
+                              margin-bottom:4px;">
+                      <span style="font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--g);">
+                          ${nombre} · NO DISPONIBLE
+                      </span>
+                      <button onclick="cerrarModalSelCinta(); abrirModalListaEsperaFormato(${pelicula.id_pelicula}, '${pelicula.titulo}', ${id}, '${nombre}')"
+                          style="font-family:var(--fo);font-size:7px;letter-spacing:1px;background:transparent;
+                                color:var(--amber);border:1px solid rgba(212,160,23,.4);padding:5px 10px;
+                                cursor:pointer;transition:all .18s;white-space:nowrap;"
+                          onmouseover="this.style.background='rgba(212,160,23,.1)'"
+                          onmouseout="this.style.background='transparent'">
+                          ⌛ ESPERAR
+                      </button>
+                  </div>
+              `).join('')}
+          </div>
+      ` : '';
+
+      const modalHtml = `
+        <div id="modal-sel-cinta" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:20000;display:flex;align-items:center;justify-content:center;padding:20px;">
+            <div style="background:var(--ink2);border:1px solid rgba(123,94,167,.35);width:100%;max-width:480px;">
+                <div style="padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--ink2);z-index:10;">
+                    <div>
+                        <div style="font-family:var(--fh);font-size:18px;letter-spacing:4px;color:var(--w);">SELECCIONAR FORMATO</div>
+                        <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-top:3px;">${pelicula.titulo.toUpperCase()}</div>
+                    </div>
+                    <span onclick="cerrarModalSelCinta()" style="cursor:pointer;color:var(--g);font-size:20px;"
+                        onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--g)'">✕</span>
+                </div>
+                <div style="padding:24px;">
+                    <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:14px;">ELIGE UNA CINTA</div>
+                    ${fmtHtml}
+                    
+                    <div style="display:flex;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.04);">
+                        <button onclick="agregarAlCarrito()"
+                            style="font-family:var(--fo);font-size:9px;letter-spacing:2px;background:var(--v);color:var(--w);border:none;padding:11px 24px;cursor:pointer;flex:1;transition:all .2s;"
+                            onmouseover="this.style.background='#9370C8'" onmouseout="this.style.background='var(--v)'">
+                            + AGREGAR AL CARRITO
+                        </button>
+                        <button onclick="cerrarModalSelCinta()"
+                            style="font-family:var(--fm);font-size:9px;letter-spacing:2px;background:transparent;color:var(--g);border:1px solid var(--g-dark);padding:10px 18px;cursor:pointer;">
+                            CANCELAR
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      document.body.style.overflow = 'hidden';
+    }
+
+    function agregarAlCarrito() {
+      const selected = document.querySelector('[name="cinta_seleccionar"]:checked');
+      if (!selected) {
+        alertaRetro({
+          titulo: 'SELECCIONA UNA CINTA',
+          texto: '<p>Debes elegir un formato de película antes de agregar al carrito.</p>',
+          icono: 'warning'
+        });
+        return;
+      }
+
+      const cintaId = parseInt(selected.value);
+
+      // Verificar si la película ya está en el carrito
+      if (carritoRentas.find(r => r.id_cinta === cintaId)) {
+        alertaRetro({
+          titulo: 'PELÍCULA EN CARRITO',
+          texto: '<p>Esta película ya está en el carrito. Selecciona otro formato o agrega otra película.</p>',
+          icono: 'info'
+        });
+        return;
+      }
+
+      // Verificar límite de películas
+      if (datosSocioActual && carritoRentas.length >= datosSocioActual.disponibles) {
+        alertaRetro({
+          titulo: 'LÍMITE ALCANZADO',
+          texto: `<p>No puedes rentar más películas.<br/>Máximo permitido: <strong>${datosSocioActual.max_peliculas_simultaneas}</strong><br/>Activas: <strong>${datosSocioActual.rentas_activas}</strong><br/>Disponibles: <strong>${datosSocioActual.disponibles}</strong></p>`,
+          icono: 'error'
+        });
+        return;
+      }
+
+      const item = {
+        id_cinta: cintaId,
+        precio_base: parseFloat(selected.dataset.precioBase),
+        multiplicador: parseFloat(selected.dataset.multiplicador),
+        pelicula_id: parseInt(selected.dataset.peliculaId),
+        pelicula_titulo: selected.dataset.peliculaTitulo
+      };
+
+      carritoRentas.push(item);
+      cerrarModalSelCinta();
+      actualizarFlotante();
+      abrirModalCarrito();
+    }
+
+    function abrirModalCarrito() {
+      const carritoHtml = carritoRentas.map((item, idx) => {
+        const costoPrimerDia = item.precio_base * item.multiplicador;
+        return `
+            <div style="display:flex;align-items:center;justify-content:space-between;background:var(--ink3);padding:12px;border:1px solid var(--g-dark);margin-bottom:8px;border-radius:2px;">
+                <div style="flex:1;">
+                    <div style="font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--w);">
+                        #${item.pelicula_id} · ${item.pelicula_titulo}
+                    </div>
+                    <div style="font-family:var(--fm);font-size:8px;letter-spacing:1px;color:var(--g);margin-top:2px;">
+                        Cinta #${String(item.id_cinta).padStart(5,'0')} · $${Number(costoPrimerDia).toLocaleString('es-CO')}/día
+                    </div>
+                </div>
+                <button onclick="eliminarDelCarrito(${idx})" style="font-family:var(--fm);font-size:10px;color:var(--red);background:transparent;border:1px solid var(--red);padding:5px 12px;cursor:pointer;transition:all .18s;"
+                    onmouseover="this.style.background='rgba(192,57,43,.1)'" onmouseout="this.style.background='transparent'">
+                    ✕ QUITAR
+                </button>
+            </div>`;
+      }).join('');
+
+      let contenido = '';
+      if (carritoRentas.length === 0) {
+        contenido = `<div style="text-align:center;padding:20px;color:var(--g);font-family:var(--fm);font-size:9px;">
+                CARRITO VACÍO
+            </div>`;
+      } else {
+        contenido = `
+            <div style="margin-bottom:20px;">
+                <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:10px;">
+                    PELÍCULAS EN CARRITO (${carritoRentas.length}/${datosSocioActual?.max_peliculas_simultaneas || '?'})
+                </div>
+                ${carritoHtml}
+            </div>
+
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.05);">
+                <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:14px;">DÍAS DE PRÉSTAMO</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    ${[1,3,5,7,14].map(d => `
+                        <button onclick="selDiasCarrito(this,${d})" data-dias="${d}" class="btn-dia-selector"
+                            style="font-family:var(--fo);font-size:8px;letter-spacing:1px;padding:8px 16px;background:transparent;border:1px solid var(--g-dark);color:var(--g);cursor:pointer;transition:all .18s;"
+                            onmouseover="this.style.borderColor='var(--v-dim)'"
+                            onmouseout="if(!this.classList.contains('sel-dia'))this.style.borderColor='var(--g-dark)'">
+                            ${d} DÍA${d > 1 ? 'S' : ''}
+                        </button>
+                    `).join('')}
+                </div>
+                <input type="hidden" id="carrito-dias" value="3">
+            </div>
+
+            <div style="margin-top:16px;">
+                <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:10px;">MÉTODO DE PAGO</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                    <button onclick="selMetodoPago(this,'PSE')" data-metodo="PSE"
+                        style="font-family:var(--fm);font-size:8px;letter-spacing:1px;padding:10px;background:transparent;border:1px solid var(--g-dark);color:var(--g);cursor:pointer;transition:all .18s;"
+                        onmouseover="this.style.borderColor='var(--v-dim)'" onmouseout="if(!this.classList.contains('sel-metodo'))this.style.borderColor='var(--g-dark)'">
+                        PSE
+                    </button>
+                </div>
+                <input type="hidden" id="carrito-metodo" value="Efectivo">
+            </div>
+
+            <div style="margin-top:16px;background:rgba(123,94,167,.06);border:1px solid rgba(123,94,167,.15);padding:12px 16px;">
+                <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:6px;">TOTAL</div>
+                <div style="font-family:var(--fo);font-size:18px;letter-spacing:2px;color:var(--v);" id="carrito-total">
+                    $0
+                </div>
+                <div style="font-family:var(--fm);font-size:8px;letter-spacing:1px;color:var(--g);margin-top:4px;" id="carrito-fecha">
+                    Devolución: -
+                </div>
+            </div>`;
+      }
+
+      const modalHtml = `
+        <div id="modal-carrito" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:20000;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;">
+            <div style="background:var(--ink2);border:1px solid rgba(123,94,167,.35);width:100%;max-width:500px;max-height:90vh;overflow-y:auto;">
+                <div style="padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--ink2);z-index:10;">
+                    <div>
+                        <div style="font-family:var(--fh);font-size:20px;letter-spacing:4px;color:var(--w);">CARRITO DE RENTAS</div>
+                        <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-top:3px;">MÚLTIPLES PELÍCULAS</div>
+                    </div>
+                    <span onclick="cerrarModalCarrito()" style="cursor:pointer;color:var(--g);font-size:20px;"
+                        onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--g)'">✕</span>
+                </div>
+                <div style="padding:24px;">
+                    ${contenido}
+                    
+                    ${carritoRentas.length > 0 ? `
+                    <div style="display:flex;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.04);">
+                        <button onclick="confirmarCarrito()" id="btn-confirmar-carrito"
+                            style="font-family:var(--fo);font-size:9px;letter-spacing:2px;background:var(--v);color:var(--w);border:none;padding:11px 24px;cursor:pointer;flex:1;transition:all .2s;"
+                            onmouseover="this.style.background='#9370C8'" onmouseout="this.style.background='var(--v)'">
+                            ✓ CONFIRMAR RENTA
+                        </button>
+                        <button onclick="cerrarModalCarrito()"
+                            style="font-family:var(--fm);font-size:9px;letter-spacing:2px;background:transparent;color:var(--g);border:1px solid var(--g-dark);padding:10px 18px;cursor:pointer;">
+                            CANCELAR
+                        </button>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>`;
+
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      document.querySelector('[data-dias="3"]')?.click();
+      actualizarTotalCarrito();
+    }
+
+    function selDiasCarrito(btn, dias) {
+      document.querySelectorAll('[data-dias]').forEach(b => {
+        b.classList.remove('sel-dia');
+        b.style.background = 'transparent';
+        b.style.borderColor = 'var(--g-dark)';
+        b.style.color = 'var(--g)';
+      });
+      btn.classList.add('sel-dia');
+      btn.style.background = 'var(--v-soft)';
+      btn.style.borderColor = 'var(--v)';
+      btn.style.color = 'var(--w)';
+      document.getElementById('carrito-dias').value = dias;
+      actualizarTotalCarrito();
+    }
+
+    function actualizarFlotante() {
+      const btn = document.getElementById('carritoFlotante');
+      const cnt = document.getElementById('carritoFlotanteCnt');
+      if (!btn) return;
+      if (carritoRentas.length > 0) {
+        btn.style.display = 'block';
+        cnt.textContent = carritoRentas.length;
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+
+    function selMetodoPago(btn, metodo) {
+      document.querySelectorAll('[data-metodo]').forEach(b => {
+        b.classList.remove('sel-metodo');
+        b.style.background = 'transparent';
+        b.style.borderColor = 'var(--g-dark)';
+        b.style.color = 'var(--g)';
+      });
+      btn.classList.add('sel-metodo');
+      btn.style.background = 'var(--v-soft)';
+      btn.style.borderColor = 'var(--v)';
+      btn.style.color = 'var(--w)';
+      document.getElementById('carrito-metodo').value = metodo;
+    }
+
+    function actualizarTotalCarrito() {
+      const dias = parseInt(document.getElementById('carrito-dias').value) || 3;
+      let total = 0;
+
+      carritoRentas.forEach(item => {
+        const primerDia = item.precio_base * item.multiplicador;
+        const diasExtra = Math.max(0, dias - 1) * 5000;
+        total += primerDia + diasExtra;
+      });
+
+      const fechaDevolucion = new Date(Date.now() + dias * 86400000)
+        .toLocaleDateString('es-CO', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        });
+
+      const totalEl = document.getElementById('carrito-total');
+      const fechaEl = document.getElementById('carrito-fecha');
+      if (totalEl) totalEl.textContent = `$${Number(total).toLocaleString('es-CO')}`;
+      if (fechaEl) fechaEl.textContent = `Devolución: ${fechaDevolucion}`;
+    }
+
+    function eliminarDelCarrito(idx) {
+      carritoRentas.splice(idx, 1);
+      actualizarFlotante();
+      if (carritoRentas.length === 0) {
+        cerrarModalCarrito();
+      } else {
+        document.getElementById('modal-carrito')?.remove();
+        abrirModalCarrito();
+      }
+    }
+
+    function cerrarModalSelCinta() {
+      document.getElementById('modal-sel-cinta')?.remove();
+      document.body.style.overflow = '';
+    }
+
+    function cerrarModalCarrito() {
+      document.getElementById('modal-carrito')?.remove();
+      document.body.style.overflow = '';
+    }
+
+    async function confirmarCarrito() {
+      if (carritoRentas.length === 0) {
+        alertaRetro({
+          titulo: 'CARRITO VACÍO',
+          texto: '<p>Debes agregar películas al carrito antes de confirmar.</p>',
+          icono: 'warning'
+        });
+        return;
+      }
+
+      const dias = parseInt(document.getElementById('carrito-dias').value);
+      const totalReal = carritoRentas.reduce((total, item) => {
+        const primerDia = item.precio_base * item.multiplicador;
+        const diasExtra = Math.max(0, dias - 1) * 5000;
+        return total + primerDia + diasExtra;
+      }, 0);
+      const cintasIds = carritoRentas.map(r => r.id_cinta);
+      const metodoPago = 'PSE';
+
+
+      console.log('totalReal:', totalReal);
+
+      const btn = document.getElementById('btn-confirmar-carrito');
+      btn.disabled = true;
+      btn.textContent = '...';
+      try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (!csrfToken) throw new Error('Token CSRF no encontrado');
+
+        const url = window.ROUTES?.rentasCrear || '/rentas';
+        const res = await fetch(url, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+          },
+          body: JSON.stringify({
+            cintas: cintasIds,
+            dias: dias,
+            metodo_pago: metodoPago,
+            monto: totalReal,
+          }),
+        });
+
+        let data = null;
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          try {
+            data = await res.json();
+          } catch (e) {
+            console.warn('Error parsing JSON:', e);
+          }
+        }
+
+        if (!res.ok) {
+          alertaRetro({
+            titulo: 'ERROR EN LA RENTA',
+            texto: `<p>${data?.message || data?.error || `Error ${res.status}: ${res.statusText}`}</p>`,
+            icono: 'error'
+          });
+          btn.disabled = false;
+          btn.textContent = '✓ CONFIRMAR RENTA';
+          return;
+        }
+
+        cerrarModalCarrito();
+        carritoRentas = [];
+        actualizarFlotante();
+        await cargarDatosSocio();
+        closeDetail();
+
+        if (data?.estado === 'Pendiente' && data?.id_prestamo && metodoPago === 'PSE') {
+          const monto = (data.monto_total && data.monto_total > 0) ? data.monto_total : totalReal;
+          setTimeout(() => abrirModalPagoPSE(data.id_prestamo, data.dias ?? dias, monto), 300);
+        } else {
+          alertaRetro({
+            titulo: '¡RENTA CONFIRMADA!',
+            texto: `<p>Tu préstamo fue registrado correctamente.<br/>Tienes <strong>${dias} día${dias > 1 ? 's' : ''}</strong> para devolver las cintas.</p>`,
+            icono: 'success'
+          });
+        }
+
+      } catch (err) {
+        console.error('Error en confirmarCarrito:', err);
+        alertaRetro({
+          titulo: 'ERROR DE CONEXIÓN',
+          texto: '<p>No se pudo conectar con el servidor. Por favor recarga la página e intenta de nuevo.</p>',
+          icono: 'error'
+        });
+        btn.disabled = false;
+        btn.textContent = '✓ CONFIRMAR RENTA';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', cargarDatosSocio);
+
+    function abrirModalListaEsperaGeneral(pelicula) {
+      const formatos = new Map();
+      (pelicula.cintas || []).forEach(c => {
+        if (c.id_formato && !formatos.has(c.id_formato)) {
+          formatos.set(c.id_formato, c.formato?.nombre ?? `Formato ${c.id_formato}`);
+        }
+      });
+
+      const formatosHtml = formatos.size ? [...formatos.entries()].map(([id, nombre]) => `
+            <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;
+                          background:var(--ink3);border:1px solid var(--g-dark);
+                          margin-bottom:4px;cursor:pointer;transition:border-color .15s;"
+                onmouseover="this.style.borderColor='var(--v-dim)'"
+                onmouseout="this.style.borderColor='var(--g-dark)'">
+                <input type="radio" name="espera_formato" value="${id}"
+                    style="accent-color:var(--v);width:14px;height:14px;">
+                <span style="font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--w);">
+                    ${nombre}
+                </span>
+            </label>`).join('') :
+        `<div style="font-family:var(--fm);font-size:9px;color:var(--g);padding:8px 0;">
+               Sin formatos registrados.
+           </div>`;
+
+      const html = `
+    <div id="modal-espera" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:20000;
+                                   display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:var(--ink2);border:1px solid rgba(123,94,167,.35);width:100%;max-width:420px;">
+            <div style="padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.05);
+                        display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <div style="font-family:var(--fh);font-size:18px;letter-spacing:4px;color:var(--w);">
+                        LISTA DE ESPERA
+                    </div>
+                    <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-top:3px;">
+                        ${pelicula.titulo.toUpperCase()}
+                    </div>
+                </div>
+                <span onclick="cerrarModalEspera()" style="cursor:pointer;color:var(--g);font-size:20px;"
+                    onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--g)'">✕</span>
+            </div>
+            <div style="padding:24px;">
+                <div style="background:rgba(212,160,23,.06);border:1px solid rgba(212,160,23,.2);
+                            border-left:3px solid var(--amber);padding:10px 16px;margin-bottom:20px;
+                            font-family:var(--fm);font-size:9px;color:var(--g);letter-spacing:1px;">
+                    ⌦ &nbsp;Todas las cintas están rentadas. Elige el formato que prefieras
+                    y te avisaremos cuando esté disponible.
+                </div>
+                <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:10px;">
+                    FORMATO PREFERIDO
+                </div>
+                ${formatosHtml}
+                <div style="display:flex;gap:10px;margin-top:20px;">
+                    <button onclick="confirmarEspera(${pelicula.id_pelicula})"
+                        style="font-family:var(--fo);font-size:9px;letter-spacing:2px;background:var(--v);
+                               color:var(--w);border:none;padding:11px 24px;cursor:pointer;flex:1;"
+                        onmouseover="this.style.background='#9370C8'"
+                        onmouseout="this.style.background='var(--v)'">
+                        ◎ UNIRME A LISTA
+                    </button>
+                    <button onclick="cerrarModalEspera()"
+                        style="font-family:var(--fm);font-size:9px;letter-spacing:2px;background:transparent;
+                               color:var(--g);border:1px solid var(--g-dark);padding:10px 18px;cursor:pointer;">
+                        CANCELAR
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.body.style.overflow = 'hidden';
+    }
+
+    function abrirModalListaEsperaFormato(idPelicula, tituloPelicula, idFormato, nombreFormato) {
+      const html = `
+        <div id="modal-espera" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:20000;display:flex;align-items:center;justify-content:center;padding:20px;">
+            <div style="background:var(--ink2);border:1px solid rgba(123,94,167,.35);width:100%;max-width:420px;">
+                <div style="padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:space-between;">
+                    <div>
+                        <div style="font-family:var(--fh);font-size:18px;letter-spacing:4px;color:var(--w);">LISTA DE ESPERA</div>
+                        <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-top:3px;">${tituloPelicula.toUpperCase()}</div>
+                    </div>
+                    <span onclick="cerrarModalEspera()" style="cursor:pointer;color:var(--g);font-size:20px;"
+                        onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--g)'">✕</span>
+                </div>
+                <div style="padding:24px;">
+                    <div style="background:rgba(212,160,23,.06);border:1px solid rgba(212,160,23,.2);border-left:3px solid var(--amber);
+                                padding:10px 16px;margin-bottom:20px;font-family:var(--fm);font-size:9px;color:var(--g);letter-spacing:1px;">
+                        ⌦ &nbsp;El formato <strong style="color:var(--amber);">${nombreFormato}</strong> no está disponible. 
+                        Te avisaremos cuando haya una cinta libre.
+                    </div>
+
+                    <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:10px;">FORMATO SELECCIONADO</div>
+                    <div style="padding:12px 14px;background:var(--ink3);border:1px solid var(--v-dim);margin-bottom:20px;">
+                        <span style="font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--w);">◈ ${nombreFormato}</span>
+                    </div>
+
+                    <div style="display:flex;gap:10px;">
+                        <button onclick="confirmarEsperaFormato(${idPelicula}, ${idFormato})"
+                            style="font-family:var(--fo);font-size:9px;letter-spacing:2px;background:var(--v);color:var(--w);border:none;padding:11px 24px;cursor:pointer;flex:1;"
+                            onmouseover="this.style.background='#9370C8'" onmouseout="this.style.background='var(--v)'">
+                            ◎ UNIRME A LISTA
+                        </button>
+                        <button onclick="cerrarModalEspera()"
+                            style="font-family:var(--fm);font-size:9px;letter-spacing:2px;background:transparent;color:var(--g);border:1px solid var(--g-dark);padding:10px 18px;cursor:pointer;">
+                            CANCELAR
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.body.style.overflow = 'hidden';
+    }
+
+    async function confirmarEsperaFormato(idPelicula, idFormato) {
+      try {
+        const res = await fetch(window.ROUTES.listaEsperaUnirse || '/lista-espera', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+          },
+          body: JSON.stringify({
+            id_pelicula: idPelicula,
+            id_formato: idFormato,
+          }),
+        });
+        const data = await res.json();
+        cerrarModalEspera();
+
+        if (!res.ok) {
+          alertaRetro({
+            titulo: 'AVISO',
+            texto: `<p>${data.message}</p>`,
+            icono: 'warning'
+          });
+          return;
+        }
+
+        await alertaRetro({
+          titulo: 'EN LISTA DE ESPERA',
+          texto: `<p>Eres el número <strong>${data.posicion}</strong> en la fila para ese formato.<br/>Te avisaremos cuando esté disponible.</p>`,
+          icono: 'success'
+        });
+
+        navigateMisRentas();
+      } catch (err) {
+        alertaRetro({
+          titulo: 'ERROR',
+          texto: '<p>No se pudo conectar.</p>',
+          icono: 'error'
+        });
+      }
+    }
+
+    function cerrarModalEspera() {
+      document.getElementById('modal-espera')?.remove();
+      document.body.style.overflow = '';
     }
 
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') closeDetail();
     });
+
+    async function confirmarEspera(idPelicula) {
+      const selected = document.querySelector('[name="espera_formato"]:checked');
+      const idFormato = selected?.value || null; // null = cualquier formato
+
+      try {
+        const res = await fetch(window.ROUTES.listaEsperaUnirse || '/lista-espera', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+          },
+          body: JSON.stringify({
+            id_pelicula: idPelicula,
+            id_formato: idFormato
+          }),
+        });
+        const data = await res.json();
+        cerrarModalEspera();
+
+        if (!res.ok) {
+          alertaRetro({
+            titulo: 'AVISO',
+            texto: `<p>${data.message}</p>`,
+            icono: 'warning'
+          });
+          return;
+        }
+
+        await alertaRetro({
+          titulo: 'EN LISTA DE ESPERA',
+          texto: `<p>Eres el número <strong>${data.posicion}</strong> en la fila.<br/>Te avisaremos cuando haya disponibilidad.</p>`,
+          icono: 'success'
+        });
+        navigateMisRentas();
+      } catch (err) {
+        alertaRetro({
+          titulo: 'ERROR',
+          texto: '<p>No se pudo conectar.</p>',
+          icono: 'error'
+        });
+      }
+    }
+
+    async function abrirModalPagoPSE(idPrestamo, dias, monto) {
+      const referencia = 'PSE-' + Math.random().toString(36).substr(2, 12).toUpperCase();
+
+      const html = `
+        <div id="modal-pago-pse" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:20000;display:flex;align-items:center;justify-content:center;padding:20px;">
+            <div style="background:var(--ink2);border:1px solid rgba(123,94,167,.35);width:100%;max-width:480px;">
+                <div style="padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:space-between;">
+                    <div>
+                        <div style="font-family:var(--fh);font-size:18px;letter-spacing:4px;color:var(--w);">PAGO PSE</div>
+                        <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-top:3px;">SIMULACIÓN DE PAGO SEGURO</div>
+                    </div>
+                    <span onclick="cerrarModalPagoPSE()" style="cursor:pointer;color:var(--g);font-size:20px;"
+                        onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--g)'">✕</span>
+                </div>
+                <div style="padding:24px;">
+                    <div style="background:rgba(42,111,70,.1);border:1px solid rgba(42,111,70,.3);border-left:3px solid #2a6f46;padding:12px 16px;margin-bottom:20px;font-family:var(--fm);font-size:8px;color:var(--g);letter-spacing:1px;">
+                        ⓘ &nbsp;Completa el pago para activar tu préstamo.
+                    </div>
+
+                    <div style="margin-bottom:16px;">
+                        <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:6px;">MONTO A PAGAR</div>
+                        <div style="font-family:var(--fo);font-size:24px;letter-spacing:2px;color:var(--v);">
+                            $${Number(monto).toLocaleString('es-CO')}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:16px;padding:14px;background:var(--ink3);border:1px solid rgba(123,94,167,.2);">
+                        <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:8px;">DETALLES DE LA TRANSACCIÓN</div>
+                        <div style="font-family:var(--fm);font-size:8px;color:var(--g);line-height:1.8;">
+                            <div>Préstamo: <span style="color:var(--w);">#${String(idPrestamo).padStart(4,'0')}</span></div>
+                            <div>Referencia: <span style="color:var(--w);">${referencia}</span></div>
+                            <div>Duración: <span style="color:var(--w);">${dias} día${dias > 1 ? 's' : ''}</span></div>
+                            <div>Estado: <span style="color:#ffd700;">PENDIENTE</span></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:20px;padding:14px;background:rgba(79,46,140,.08);border:1px solid rgba(79,46,140,.2);">
+                        <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:8px;">BANCO DE DESTINO</div>
+                        <div style="font-family:var(--fm);font-size:9px;color:var(--w);">BANCO PIXELVHS</div>
+                        <div style="font-family:var(--fm);font-size:8px;color:var(--g);margin-top:4px;">Cuenta: VHS-12345678</div>
+                    </div>
+
+                    <div style="display:flex;gap:10px;">
+                        <button onclick="confirmarPagoPSE(${idPrestamo}, '${referencia}', ${monto})"
+                            style="font-family:var(--fo);font-size:9px;letter-spacing:2px;background:#2a6f46;color:var(--w);border:none;padding:12px 24px;cursor:pointer;flex:1;transition:all .2s;"
+                            onmouseover="this.style.background='#1f4d32'" onmouseout="this.style.background='#2a6f46'">
+                            ✓ CONFIRMAR PAGO
+                        </button>
+                        <button onclick="cerrarModalPagoPSE()"
+                            style="font-family:var(--fm);font-size:9px;letter-spacing:2px;background:transparent;color:var(--g);border:1px solid var(--g-dark);padding:11px 18px;cursor:pointer;transition:all .2s;"
+                            onmouseover="this.style.borderColor='var(--v-dim)'" onmouseout="this.style.borderColor='var(--g-dark)'">
+                            CANCELAR
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarModalPagoPSE() {
+      document.getElementById('modal-pago-pse')?.remove();
+      document.body.style.overflow = '';
+    }
+
+    async function confirmarPagoPSE(idPrestamo, referencia, monto) {
+      const btn = document.querySelector('#modal-pago-pse button');  // más seguro
+      if (btn) { btn.disabled = true; btn.textContent = 'Procesando...'; }
+
+      try {
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+          const res = await fetch('{{ route("pago.pse.confirmar") }}', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'X-CSRF-TOKEN': csrfToken,
+              },
+              body: JSON.stringify({
+                  id_prestamo: idPrestamo,
+                  referencia:  referencia,
+                  monto:       monto,
+              }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+              alertaRetro({
+                  titulo: 'ERROR EN EL PAGO',
+                  texto: `<p>${data.error || data.message || 'No se pudo procesar el pago'}</p>`,
+                  icono: 'error'
+              });
+              if (btn) { btn.disabled = false; btn.textContent = '✓ CONFIRMAR PAGO'; }
+              return;
+          }
+
+          // ── Éxito ──────────────────────────────────────────────
+          cerrarModalPagoPSE();
+          await cargarDatosSocio();
+
+          // Sin .then() — await directo
+          await alertaRetro({
+              titulo: '¡PAGO CONFIRMADO!',
+              texto: `<p>Tu pago ha sido procesado.<br/>Referencia: <strong>${referencia}</strong><br/>Tu renta ya está activa.</p>`,
+              icono: 'success'
+          });
+
+          navigateMisRentas();
+
+      } catch (err) {
+          console.error('Error en confirmarPagoPSE:', err);
+          alertaRetro({
+              titulo: 'ERROR',
+              texto: '<p>No se pudo procesar el pago. Por favor intenta de nuevo.</p>',
+              icono: 'error'
+          });
+          if (btn) { btn.disabled = false; btn.textContent = '✓ CONFIRMAR PAGO'; }
+      }
+  }
+
+    function calcularTotalCarrito(dias) {
+      return carritoRentas.reduce((total, item) => {
+        return total + (item.precio_base * item.multiplicador * dias);
+      }, 0);
+    }
 
     async function submitPerfil() {
       const payload = {
@@ -3286,6 +4611,41 @@
         input.value = '';
       }
     }
+
+    function toggleNotifs() {
+      const d = document.getElementById('notifDropdown');
+      d.style.display = d.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function marcarTodasLeidas() {
+      await fetch('{{ route("notificaciones.leer") }}', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': CSRF,
+          'Accept': 'application/json'
+        }
+      });
+      document.getElementById('notifBadge')?.remove();
+      document.querySelectorAll('#notifDropdown > div[style*="rgba(123,94,167"]')
+        .forEach(el => el.style.borderLeft = '2px solid transparent');
+    }
+
+    function irAPelicula(notifId) {
+      fetch(`/notificaciones/${notifId}/leer`, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': CSRF
+        }
+      });
+      toggleNotifs();
+    }
+
+    // Cerrar al click fuera
+    document.addEventListener('click', e => {
+      const wrap = document.getElementById('notifBtn')?.parentElement;
+      if (wrap && !wrap.contains(e.target))
+        document.getElementById('notifDropdown').style.display = 'none';
+    });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="{{ asset('js/alertas.js') }}"></script>
@@ -3338,8 +4698,8 @@
           var front = document.getElementById('fvDvdFront');
           if (front && imgs.dvd) {
             front.style.backgroundImage = 'url("' + imgs.dvd + '")';
-            front.style.backgroundSize = 'auto 100%'; 
-            front.style.backgroundPosition = 'right center'; 
+            front.style.backgroundSize = 'auto 100%';
+            front.style.backgroundPosition = 'right center';
             front.style.backgroundRepeat = 'no-repeat';
           }
 
@@ -3347,7 +4707,7 @@
           if (back && imgs.dvd) {
             back.style.backgroundImage = 'url("' + imgs.dvd + '")';
             back.style.backgroundSize = 'auto 100%';
-            back.style.backgroundPosition = 'left center'; 
+            back.style.backgroundPosition = 'left center';
             back.style.backgroundRepeat = 'no-repeat';
           }
 

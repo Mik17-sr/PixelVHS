@@ -8,7 +8,7 @@ class Cinta extends Model
 {
     protected $table = 'cinta';
     protected $primaryKey = 'id_cinta';
-    public $timestamps = false;
+    public $timestamps = true;
 
 
     protected $fillable = [

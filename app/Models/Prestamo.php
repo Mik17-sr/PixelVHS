@@ -16,6 +16,7 @@ class Prestamo extends Model
         'fecha_limite',
         'fecha_devolucion',
         'estado',
+        'cargo_diario',
         'observaciones',
     ];
 

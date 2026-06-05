@@ -7,6 +7,7 @@ use App\Models\Director;
 use App\Models\Formato;
 use App\Models\Genero;
 use App\Models\Pelicula;
+use App\Models\TipoMulta;
 use Illuminate\Http\Request;
 
 class DashboardEmpleadoController
@@ -18,6 +19,8 @@ class DashboardEmpleadoController
         $actores = Actor::all();
         $generos = Genero::all();
         $formatos = Formato::all();
-        return view('dashboard_empleado', compact('peliculas', 'directores', 'actores', 'generos', 'formatos'));
+        $tiposMulta = TipoMulta::whereIn('id_tipo_multa', [1, 2, 3])
+        ->get(['id_tipo_multa', 'concepto', 'multiplicador']);
+        return view('dashboard_empleado', compact('peliculas', 'directores', 'actores', 'generos', 'formatos', 'tiposMulta'));
     }
 }

@@ -7,6 +7,11 @@
     overflow: hidden;
     position: relative;
     font-family: 'Courier New', monospace;
+    z-index: 99999 !important;
+}
+
+.swal2-backdrop-show {
+    z-index: 99998 !important;
 }
 
 .retro-popup::before {

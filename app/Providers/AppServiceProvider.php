@@ -6,9 +6,11 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
+    protected $listen = [
+        \App\Events\CintaDisponible::class => [
+            \App\Listeners\NotificarListaEspera::class,
+        ],
+    ];
     public function register(): void
     {
         //
