@@ -4,6 +4,22 @@
     <img src="pixel.gif" alt="Demo del sistema">
   </a>
 </p>
+<br>
+<h1>LINK VIDEO ENTREGA 1 PRELIMINAR CORREGIDO</h1>
+<p align="center">
+  <a href="https://youtu.be/WC6i6DKnArA">
+    <img src="pixel.gif" alt="Demo del sistema">
+  </a>
+</p>
+<br>
+<h1>LINK VIDEO ENTREGA FINAL<h1>
+<p align="center">
+  <a href="https://youtu.be/nYz92dgQ1w0">
+    <img src="final.png" alt="Entrega Final del sistema">
+  </a>
+</p>
+
+    
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">
