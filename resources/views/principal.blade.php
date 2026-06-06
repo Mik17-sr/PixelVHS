@@ -1500,23 +1500,6 @@
       pointer-events: none;
     }
 
-    /* ── VINTAGE REVIEW BLOCK ── */
-    .review-block {
-      margin-bottom: 28px;
-      border-left: 2px solid var(--v-dim);
-      padding: 14px 18px;
-      background: rgba(123, 94, 167, 0.05);
-    }
-
-    .review-block::before {
-      content: 'RESEÑA CRÍTICA';
-      font-family: var(--fm);
-      font-size: 8px;
-      letter-spacing: 3px;
-      color: var(--v-dim);
-      display: block;
-      margin-bottom: 10px;
-    }
 
     .stars-row {
       display: flex;
@@ -2375,6 +2358,10 @@
       rentasCrear: @json(route('rentas.crear')),
       rentasMis: @json(route('rentas.mis')),
       listaEsperaUnirse: @json(route('lista-espera.unirse')),
+      valoracionesGuardar: @json(route('valoraciones.guardar')),
+      valoracionesPelicula: @json(route('valoraciones.pelicula', ['id' => '__ID__'])),
+      valoracionesMia: @json(route('valoraciones.mia', ['id' => '__ID__'])),
+      recomendaciones: @json(route('recomendaciones')),
     };
   </script>
 
@@ -2583,7 +2570,13 @@
           @endforeach
         </div>
       </div>
-
+      <div class="shelf" id="shelfRecomendadas" style="display:none;">
+        <div class="shelf-head">
+          <h2>RECOMENDADAS PARA TI</h2>
+          <span id="recoSubtitle" style="color:var(--v-dim);">// BASADO EN TUS GUSTOS</span>
+        </div>
+        <div class="scroll-row" id="rowRecomendadas"></div>
+      </div>
       <!-- SHELVES: POR GÉNERO (scroll horizontal) -->
       @foreach($generos as $genero)
       @if(isset($peliculasPorGenero[$genero->nombre]) && $peliculasPorGenero[$genero->nombre]->count() > 0)
@@ -2969,19 +2962,11 @@
           <div class="detail-synopsis-label">SINOPSIS</div>
           <p class="detail-synopsis" id="detailSyn"></p>
           <div class="detail-stats" id="detailStats"></div>
-          <div class="review-block" id="reviewBlock">
-            <div class="stars-row">
-              <div class="stars" id="detailStars"></div>
-              <span class="score-num" id="detailScore"></span>
-              <span class="verdict-pill" id="detailVerdict"></span>
-            </div>
-            <p class="review-quote" id="detailQuote"></p>
-            <div class="review-critic" id="detailCritic"></div>
-          </div>
           <div class="detail-actions">
             <button class="btn-primary" id="detailRentBtn" onclick="handleRent(event)">+ RENTAR</button>
             <button class="btn-secondary">♡ GUARDAR</button>
           </div>
+          <div id="valoraciones-panel"></div>
         </div>
       </div>
     </div>
@@ -3563,26 +3548,6 @@
         return estado === 'disponible' || c.rentada === 0 || c.rentada === '0' || c.rentada === false;
       }).length;
       const total = cintas.length;
-      const score = pelicula.puntuacion != null ?
-        pelicula.puntuacion :
-        (total > 0 ? +(disponibles / total * 5).toFixed(1) : 0);
-      const stars = Math.round(score);
-      const verdict = score >= 4.5 ? 'IMPRESCINDIBLE' :
-        score >= 4 ? 'OBRA MAESTRA' :
-        score >= 3 ? 'RECOMENDADA' :
-        score >= 2 ? 'REGULAR' :
-        'SIN DATOS';
-
-      document.getElementById('detailStars').innerHTML = [1, 2, 3, 4, 5].map(i => `<span class="star${i<=stars?' on':''}"">★</span>`).join('');
-      document.getElementById('detailScore').textContent = score.toFixed(1) + ' / 5.0';
-      document.getElementById('detailVerdict').textContent = verdict;
-      document.getElementById('detailQuote').textContent = pelicula.resumen ?
-        pelicula.resumen.slice(0, 120) + (pelicula.resumen.length > 120 ? '…' : '') :
-        'Sin reseña disponible.';
-      document.getElementById('detailCritic').textContent =
-        pelicula.director?.nombre ?
-        'DIR. ' + (pelicula.director.nombre).toUpperCase() + ' · PIXELVHS' :
-        'PIXELVHS · EST. 1985';
 
       const rentBtn = document.getElementById('detailRentBtn');
       const rentedBanner = document.getElementById('detailRented');
@@ -3615,6 +3580,7 @@
         panel.style.display = 'block';
         document.body.style.overflow = 'hidden';
         requestAnimationFrame(() => panel.classList.add('show'));
+        cargarValoraciones(pelicula.id_pelicula);
       }, 2100);
     }
 
@@ -4433,61 +4399,70 @@
     }
 
     async function confirmarPagoPSE(idPrestamo, referencia, monto) {
-      const btn = document.querySelector('#modal-pago-pse button');  // más seguro
-      if (btn) { btn.disabled = true; btn.textContent = 'Procesando...'; }
+      const btn = document.querySelector('#modal-pago-pse button'); // más seguro
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Procesando...';
+      }
 
       try {
-          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-          const res = await fetch('{{ route("pago.pse.confirmar") }}', {
-              method: 'POST',
-              credentials: 'same-origin',
-              headers: {
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json',
-                  'X-CSRF-TOKEN': csrfToken,
-              },
-              body: JSON.stringify({
-                  id_prestamo: idPrestamo,
-                  referencia:  referencia,
-                  monto:       monto,
-              }),
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        const res = await fetch('{{ route("pago.pse.confirmar") }}', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+          },
+          body: JSON.stringify({
+            id_prestamo: idPrestamo,
+            referencia: referencia,
+            monto: monto,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alertaRetro({
+            titulo: 'ERROR EN EL PAGO',
+            texto: `<p>${data.error || data.message || 'No se pudo procesar el pago'}</p>`,
+            icono: 'error'
           });
-
-          const data = await res.json();
-
-          if (!res.ok) {
-              alertaRetro({
-                  titulo: 'ERROR EN EL PAGO',
-                  texto: `<p>${data.error || data.message || 'No se pudo procesar el pago'}</p>`,
-                  icono: 'error'
-              });
-              if (btn) { btn.disabled = false; btn.textContent = '✓ CONFIRMAR PAGO'; }
-              return;
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '✓ CONFIRMAR PAGO';
           }
+          return;
+        }
 
-          // ── Éxito ──────────────────────────────────────────────
-          cerrarModalPagoPSE();
-          await cargarDatosSocio();
+        // ── Éxito ──────────────────────────────────────────────
+        cerrarModalPagoPSE();
+        await cargarDatosSocio();
 
-          // Sin .then() — await directo
-          await alertaRetro({
-              titulo: '¡PAGO CONFIRMADO!',
-              texto: `<p>Tu pago ha sido procesado.<br/>Referencia: <strong>${referencia}</strong><br/>Tu renta ya está activa.</p>`,
-              icono: 'success'
-          });
+        // Sin .then() — await directo
+        await alertaRetro({
+          titulo: '¡PAGO CONFIRMADO!',
+          texto: `<p>Tu pago ha sido procesado.<br/>Referencia: <strong>${referencia}</strong><br/>Tu renta ya está activa.</p>`,
+          icono: 'success'
+        });
 
-          navigateMisRentas();
+        navigateMisRentas();
 
       } catch (err) {
-          console.error('Error en confirmarPagoPSE:', err);
-          alertaRetro({
-              titulo: 'ERROR',
-              texto: '<p>No se pudo procesar el pago. Por favor intenta de nuevo.</p>',
-              icono: 'error'
-          });
-          if (btn) { btn.disabled = false; btn.textContent = '✓ CONFIRMAR PAGO'; }
+        console.error('Error en confirmarPagoPSE:', err);
+        alertaRetro({
+          titulo: 'ERROR',
+          texto: '<p>No se pudo procesar el pago. Por favor intenta de nuevo.</p>',
+          icono: 'error'
+        });
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '✓ CONFIRMAR PAGO';
+        }
       }
-  }
+    }
 
     function calcularTotalCarrito(dias) {
       return carritoRentas.reduce((total, item) => {
@@ -4646,6 +4621,256 @@
       if (wrap && !wrap.contains(e.target))
         document.getElementById('notifDropdown').style.display = 'none';
     });
+    let _valoracionActual = null;
+
+    async function cargarValoraciones(idPelicula) {
+      try {
+        const [resPel, resMia] = await Promise.all([
+          fetch(window.ROUTES.valoracionesPelicula.replace('__ID__', idPelicula), {
+            credentials: 'same-origin',
+            headers: {
+              'Accept': 'application/json'
+            }
+          }),
+          fetch(window.ROUTES.valoracionesMia.replace('__ID__', idPelicula), {
+            credentials: 'same-origin',
+            headers: {
+              'Accept': 'application/json'
+            }
+          }),
+        ]);
+
+        const dataPel = await resPel.json();
+        const dataMia = await resMia.json();
+
+        _valoracionActual = dataMia.valoracion;
+        renderValoraciones(dataPel, dataMia.valoracion);
+      } catch (e) {
+        console.error('Error cargando valoraciones:', e);
+      }
+    }
+
+    function renderValoraciones(data, mia) {
+      const cont = document.getElementById('valoraciones-panel');
+      if (!cont) return;
+      // ── Actualizar review-block con datos reales ──────────────
+      const promedio = data.promedio ?? 0;
+      const stars = Math.round(promedio);
+      const verdict = promedio >= 4.5 ? 'IMPRESCINDIBLE' :
+        promedio >= 4 ? 'OBRA MAESTRA' :
+        promedio >= 3 ? 'RECOMENDADA' :
+        promedio >= 2 ? 'REGULAR' :
+        promedio > 0 ? 'POLÉMICA' : 'SIN VALORAR';
+
+      // Última reseña con comentario como quote
+      const conComentario = (data.valoraciones || []).find(v => v.comentario);
+
+      // ── resto del panel igual que antes ──────────────────────
+      const estrellasFn = (n) => [1, 2, 3, 4, 5].map(i =>
+        `<span style="color:${i <= Math.round(n) ? 'var(--v)' : 'var(--g-dark)'};font-size:14px;">★</span>`
+      ).join('');
+
+      const miPuntuacion = mia?.puntuacion ?? 0;
+      const selectorEstrellas = [1, 2, 3, 4, 5].map(i => `
+          <span data-val="${i}" onclick="seleccionarEstrella(${i})"
+              style="font-size:22px;cursor:pointer;transition:color .15s;
+                    color:${i <= miPuntuacion ? 'var(--v)' : 'var(--g-dark)'};"
+              onmouseover="hoverEstrella(${i})"
+              onmouseout="resetEstrellas(${miPuntuacion})">★</span>
+      `).join('');
+
+      cont.innerHTML = `
+          <div style="border-top:1px solid rgba(255,255,255,.05);margin-top:28px;padding-top:24px;">
+              <div style="font-family:var(--fm);font-size:9px;letter-spacing:3px;color:var(--v-dim);margin-bottom:16px;">
+                  VALORACIONES · ${data.total} RESEÑA${data.total !== 1 ? 'S' : ''}
+              </div>
+              ${data.total > 0 ? `
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;
+                          padding:12px 16px;background:rgba(123,94,167,.06);border:1px solid rgba(123,94,167,.15);">
+                  <div style="font-family:var(--fo);font-size:28px;color:var(--v);">${promedio.toFixed(1)}</div>
+                  <div>
+                      <div style="display:flex;gap:2px;">${estrellasFn(promedio)}</div>
+                      <div style="font-family:var(--fm);font-size:8px;color:var(--g);margin-top:3px;letter-spacing:1px;">
+                          PROMEDIO DE ${data.total} VALORACIÓN${data.total !== 1 ? 'ES' : ''}
+                      </div>
+                  </div>
+              </div>` : ''}
+              <div style="margin-bottom:20px;padding:16px;background:var(--ink3);border:1px solid rgba(123,94,167,.2);">
+                  <div style="font-family:var(--fm);font-size:8px;letter-spacing:2px;color:var(--g);margin-bottom:10px;">
+                      ${mia ? 'TU VALORACIÓN' : 'CALIFICA ESTA PELÍCULA'}
+                  </div>
+                  <div style="display:flex;gap:4px;margin-bottom:12px;" id="estrellas-selector">
+                      ${selectorEstrellas}
+                  </div>
+                  <textarea id="comentario-val" placeholder="Escribe tu reseña (opcional)..."
+                      style="width:100%;background:var(--ink2);border:1px solid var(--g-dark);
+                            border-left:2px solid var(--v-dim);color:var(--w);font-family:var(--fm);
+                            font-size:10px;padding:10px 12px;outline:none;resize:vertical;
+                            min-height:60px;letter-spacing:.5px;transition:border-color .18s;"
+                      onfocus="this.style.borderColor='var(--v)'"
+                      onblur="this.style.borderColor='var(--g-dark)'"
+                  >${mia?.comentario ?? ''}</textarea>
+                  <button onclick="enviarValoracion(${currentMovie.id_pelicula})"
+                      style="margin-top:10px;font-family:var(--fo);font-size:8px;letter-spacing:2px;
+                            background:var(--v);color:var(--w);border:none;padding:9px 22px;cursor:pointer;transition:all .2s;"
+                      onmouseover="this.style.background='#9370C8'" onmouseout="this.style.background='var(--v)'">
+                      ${mia ? '✓ ACTUALIZAR' : '✓ ENVIAR VALORACIÓN'}
+                  </button>
+              </div>
+              ${data.valoraciones.length ? data.valoraciones.slice(0, 5).map(v => `
+              <div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,.04);">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                      <div style="font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--w);">
+                          ${v.nombre.toUpperCase()}
+                      </div>
+                      <div style="display:flex;gap:2px;">${estrellasFn(v.puntuacion)}</div>
+                  </div>
+                  ${v.comentario ? `<div style="font-family:var(--fu);font-size:12px;color:#999;line-height:1.6;font-style:italic;">"${v.comentario}"</div>` : ''}
+                  <div style="font-family:var(--fm);font-size:7px;color:var(--g);letter-spacing:1px;margin-top:6px;">
+                      ${new Date(v.fecha).toLocaleDateString('es-CO')}
+                  </div>
+              </div>`).join('') : `
+              <div style="font-family:var(--fm);font-size:9px;color:var(--g);letter-spacing:2px;padding:10px 0;">
+                  SIN RESEÑAS AÚN
+              </div>`}
+          </div>`;
+    }
+
+    let _estrellaTemp = 0;
+
+    function hoverEstrella(n) {
+      document.querySelectorAll('#estrellas-selector span').forEach((s, i) => {
+        s.style.color = i < n ? 'var(--v)' : 'var(--g-dark)';
+      });
+    }
+
+
+    function resetEstrellas(actual) {
+      const val = _estrellaTemp > 0 ? _estrellaTemp : actual;
+      document.querySelectorAll('#estrellas-selector span').forEach((s, i) => {
+        s.style.color = i < val ? 'var(--v)' : 'var(--g-dark)';
+      });
+    }
+
+    function seleccionarEstrella(n) {
+      _estrellaTemp = n;
+      document.querySelectorAll('#estrellas-selector span').forEach((s, i) => {
+        s.style.color = i < n ? 'var(--v)' : 'var(--g-dark)';
+      });
+    }
+
+    async function enviarValoracion(idPelicula) {
+      const puntuacion = _estrellaTemp > 0 ? _estrellaTemp : (_valoracionActual?.puntuacion ?? 0);
+      if (!puntuacion) {
+        alertaRetro({
+          titulo: 'SELECCIONA UNA PUNTUACIÓN',
+          texto: '<p>Haz clic en las estrellas para calificar.</p>',
+          icono: 'warning'
+        });
+        return;
+      }
+
+      const comentario = document.getElementById('comentario-val')?.value?.trim() || null;
+
+      try {
+        const res = await fetch(window.ROUTES.valoracionesGuardar, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': CSRF,
+          },
+          body: JSON.stringify({
+            id_pelicula: idPelicula,
+            puntuacion,
+            comentario
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alertaRetro({
+            titulo: 'ERROR',
+            texto: `<p>${data.message}</p>`,
+            icono: 'error'
+          });
+          return;
+        }
+
+        alertaRetro({
+          titulo: '¡VALORACIÓN GUARDADA!',
+          texto: '<p>Gracias por tu reseña.</p>',
+          icono: 'success'
+        });
+        cargarValoraciones(idPelicula);
+      } catch (e) {
+        alertaRetro({
+          titulo: 'ERROR',
+          texto: '<p>No se pudo conectar.</p>',
+          icono: 'error'
+        });
+      }
+
+    }
+    async function cargarRecomendaciones() {
+      try {
+        const res = await fetch(window.ROUTES.recomendaciones, {
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const peliculas = data.peliculas || [];
+        if (!peliculas.length) return;
+
+        const row = document.getElementById('rowRecomendadas');
+        const shelf = document.getElementById('shelfRecomendadas');
+
+        row.innerHTML = peliculas.map(m => {
+          const img = m.foto_portada || '';
+          const titulo = (m.titulo || '').toUpperCase();
+          const genero = (m.genero?.nombre || 'N/A').toUpperCase();
+          const anio = m.anio_lanzamiento || '';
+          const movieData = window.MOVIE_MAP[m.id_pelicula];
+          const dataAttr = movieData ?
+            JSON.stringify(movieData).replace(/"/g, '&quot;') :
+            null;
+          const onclick = dataAttr ?
+            `openDetail(${dataAttr})` :
+            `console.warn('Película ${m.id_pelicula} no en MOVIE_MAP')`;
+
+          return `
+        <div class="card" data-genre="" data-title="${m.titulo.toLowerCase()}" onclick="${onclick}">
+          <div class="b-genre">${genero}</div>
+          <div class="tw">
+            <img src="${img}" alt="${m.titulo}" class="thumb" loading="lazy">
+          </div>
+          <div class="strip">
+            <h3>${titulo}</h3>
+            <div class="yr">${anio}</div>
+          </div>
+          <div class="hpanel">
+            <h3>${titulo}</h3>
+            <p>${genero} · ${anio}</p>
+            <div class="acts">
+              <button class="btn-info" onclick="event.stopPropagation(); ${onclick}">VER MÁS</button>
+              <button class="btn-wish" onclick="event.stopPropagation()">♡</button>
+            </div>
+          </div>
+        </div>`;
+        }).join('');
+
+        shelf.style.display = 'block';
+      } catch (e) {
+        console.error('Error cargando recomendaciones:', e);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', cargarRecomendaciones);
   </script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="{{ asset('js/alertas.js') }}"></script>
@@ -4745,8 +4970,8 @@
       /* ─── Hook openDetail: resetear al abrir nueva película ─── */
       var _orig = window.openDetail;
       window.openDetail = function(pelicula) {
-        /* reset formato activo */
         _activeFmt = null;
+        _estrellaTemp = 0;
         document.querySelectorAll('.fmt-scene').forEach(s => s.style.display = 'none');
         document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('formatViewer').style.display = 'none';

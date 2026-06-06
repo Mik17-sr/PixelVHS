@@ -16,6 +16,7 @@ use App\Http\Controllers\ListaEsperaController;
 use App\Http\Controllers\PeliculaController;
 use App\Http\Controllers\PrestamoController;
 use App\Http\Controllers\PagoController;
+use App\Http\Controllers\ValoracionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 
@@ -42,6 +43,10 @@ Route::middleware(['auth', 'role:socio'])->group(function () {
         return response()->json(['ok' => true]);
     })->name('notificaciones.leer');
     Route::post('/prestamos/{id}/cancelar', [PrestamoController::class, 'cancelar'])->name('prestamos.cancelar');
+    Route::post('/valoraciones', [ValoracionController::class, 'guardar'])->name('valoraciones.guardar');
+    Route::get('/valoraciones/{id}/mia', [ValoracionController::class, 'miValoracion'])->name('valoraciones.mia');
+    Route::get('/valoraciones/{id}', [ValoracionController::class, 'porPelicula'])->name('valoraciones.pelicula');
+    Route::get('/recomendaciones', [ValoracionController::class, 'recomendaciones'])->name('recomendaciones');
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {

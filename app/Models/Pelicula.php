@@ -39,6 +39,7 @@ class Pelicula extends Model
         return $this->hasMany(Cinta::class, 'id_pelicula', 'id_pelicula');
     }
 
+
     public function actores()
     {
         return $this->belongsToMany(
