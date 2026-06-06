@@ -11,6 +11,7 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\ActorController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CintaController;
 use App\Http\Controllers\ListaEsperaController;
 use App\Http\Controllers\PeliculaController;
@@ -101,6 +102,11 @@ Route::middleware(['auth', 'role:admin'])
     Route::put('/usuarios/{id}',
         [EditUsuarioController::class, 'actualizarUsuario']
     )->name('usuarios.actualizar');
+    Route::get('/prestamos',         [AdminController::class, 'prestamosIndex'])  ->name('prestamos.index');
+    Route::get('/prestamos/{id}',    [AdminController::class, 'prestamosShow'])   ->name('prestamos.show');
+    Route::get('/reportes',          [AdminController::class, 'reportesIndex'])   ->name('reportes.index');
+    Route::get('/peliculas', [AdminController::class, 'peliculasIndex'])
+    ->name('peliculas.index');
 });
 
 Route::middleware(['auth', 'role:empleado'])

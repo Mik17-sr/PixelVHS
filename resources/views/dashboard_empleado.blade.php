@@ -1797,7 +1797,6 @@
                 </div>
             </div>
 
-            <!-- MODAL DETALLE PRÉSTAMO -->
             <div id="modal-pr" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;align-items:center;justify-content:center;padding:20px;">
                 <div style="background:var(--ink2);border:1px solid rgba(123,94,167,.35);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;">
                     <div style="padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--ink2);z-index:10;">
@@ -1812,7 +1811,7 @@
                 </div>
             </div>
         </div>
-    </main><!-- /main -->
+    </main>
     </div>
     <script>
         const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';

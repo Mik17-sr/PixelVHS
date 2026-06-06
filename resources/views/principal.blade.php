@@ -2453,8 +2453,6 @@
         </div>
       </div>
     </header>
-
-    <!-- Búsqueda con resultados en dropdown -->
     <div class="search-panel" id="sPanel">
       <div class="s-wrap">
         <input type="text" id="sInput" class="s-input"
@@ -2478,11 +2476,7 @@
         </div>
       </div>
     </div>
-
-    <!-- ══ SHELVES ══ -->
     <div class="movies-main" id="moviesMain">
-
-      <!-- SHELF: DESTACADAS (grid 4 columnas) -->
       <div class="shelf" id="shelfDestacadas">
         <div class="shelf-head">
           <h2>DESTACADAS</h2>
@@ -2689,13 +2683,10 @@
           </label>
           <input type="file" id="fotoInput" accept="image/*" style="display:none" onchange="uploadFoto(this)">
         </div>
-
-        <!-- Spinner de carga foto -->
         <div id="foto-loading" style="display:none;">
           <span class="spinner"></span>
         </div>
 
-        <!-- Nombre y rol -->
         <div style="text-align:center;">
           <div id="perfil-nombre-display" style="font-family:var(--fh); font-size:20px; letter-spacing:4px; color:var(--w);">
             {{ strtoupper(auth()->user()->nombre) }}
@@ -2706,10 +2697,7 @@
           </div>
         </div>
 
-        <!-- Estado -->
         <span class="status-pill activo" style="font-size:8px;">◉ ACTIVO</span>
-
-        <!-- ID -->
         <div style="font-family:var(--fm); font-size:8px; color:var(--g); letter-spacing:2px;">
           ID · {{ str_pad(auth()->user()->id_usuario, 4, '0', STR_PAD_LEFT) }}
         </div>
@@ -2795,12 +2783,10 @@
       <div style="font-family:var(--fm); font-size:9px; letter-spacing:2px; color:var(--g);">Cargando tus rentas...</div>
     </div>
   </div>
-  <!-- ══ VHS SLOT ══ -->
   <div class="vhs-slot" id="vhsSlot">
     <div class="vhs-slot-inner"></div>
   </div>
 
-  <!-- ══ VHS CASSETTE ══ -->
   <div class="vhs-loader" id="vhsLoader">
     <div class="vhs-body">
       <div class="vhs-label">
@@ -2813,11 +2799,7 @@
       </div>
     </div>
   </div>
-
-  <!-- ══ DETAIL OVERLAY ══ -->
   <div class="detail-overlay" id="detailOverlay"></div>
-
-  <!-- ══ DETAIL PANEL ══ -->
   <div class="detail-panel" id="detailPanel">
     <div class="detail-backdrop" id="detailBackdrop"></div>
     <div class="detail-content">
@@ -4967,7 +4949,6 @@
         if (el && url) el.style.backgroundImage = 'url("' + url + '")';
       }
 
-      /* ─── Hook openDetail: resetear al abrir nueva película ─── */
       var _orig = window.openDetail;
       window.openDetail = function(pelicula) {
         _activeFmt = null;
@@ -4980,7 +4961,6 @@
         _orig(pelicula);
       };
 
-      /* ─── Mouse sheen en discos ─── */
       document.addEventListener('mousemove', function(e) {
         ['fvBluraySheen', 'fvUhdSheen'].forEach(function(id) {
           var el = document.getElementById(id);
@@ -4995,7 +4975,6 @@
         });
       });
 
-      /* ─── UHD hover: acelerar efectos ─── */
       document.addEventListener('DOMContentLoaded', function() {
         var uhdDisc = document.getElementById('fvUhd');
         if (!uhdDisc) return;
